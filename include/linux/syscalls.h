@@ -960,5 +960,6 @@ asmlinkage long sys_pidfd_send_signal(int pidfd, int sig,
 int ksys_mount(char __user *dev_name, char __user *dir_name, char __user *type,
 	       unsigned long flags, void __user *data);
 int ksys_umount(char __user *name, int flags);
+int ksys_dup(unsigned int fildes);
 
 #endif
