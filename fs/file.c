@@ -795,6 +795,7 @@ int __close_range(unsigned fd, unsigned max_fd, unsigned int flags)
 
 	return 0;
 }
+EXPORT_SYMBOL(__close_fd); /* for ksys_close() */
 
 void do_close_on_exec(struct files_struct *files)
 {
