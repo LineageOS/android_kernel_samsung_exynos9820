@@ -359,7 +359,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
  * We do this by temporarily clearing all FS-related capabilities and
  * switching the fsuid/fsgid around to the real ones.
  */
-SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+long do_faccessat(int dfd, const char __user *filename, int mode)
 {
 	const struct cred *old_cred;
 	struct cred *override_cred;
@@ -456,9 +456,14 @@ out:
 	return res;
 }
 
+SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+{
+	return do_faccessat(dfd, filename, mode);
+}
+
 SYSCALL_DEFINE2(access, const char __user *, filename, int, mode)
 {
-	return sys_faccessat(AT_FDCWD, filename, mode);
+	return do_faccessat(AT_FDCWD, filename, mode);
 }
 
 int ksys_chdir(const char __user *filename)
