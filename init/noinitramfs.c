@@ -34,7 +34,7 @@ int __init default_rootfs(void)
 {
 	int err;
 
-	err = sys_mkdir((const char __user __force *) "/dev", 0755);
+	err = ksys_mkdir((const char __user __force *) "/dev", 0755);
 	if (err < 0)
 		goto out;
 
@@ -44,7 +44,7 @@ int __init default_rootfs(void)
 	if (err < 0)
 		goto out;
 
-	err = sys_mkdir((const char __user __force *) "/root", 0700);
+	err = ksys_mkdir((const char __user __force *) "/root", 0700);
 	if (err < 0)
 		goto out;
 
