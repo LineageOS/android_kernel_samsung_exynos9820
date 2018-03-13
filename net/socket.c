@@ -2000,7 +2000,7 @@ SYSCALL_DEFINE5(getsockopt, int, fd, int, level, int, optname,
  *	Shutdown a socket.
  */
 
-SYSCALL_DEFINE2(shutdown, int, fd, int, how)
+int __sys_shutdown(int fd, int how)
 {
 	int err, fput_needed;
 	struct socket *sock;
@@ -2013,6 +2013,11 @@ SYSCALL_DEFINE2(shutdown, int, fd, int, how)
 		fput_light(sock->file, fput_needed);
 	}
 	return err;
+}
+
+SYSCALL_DEFINE2(shutdown, int, fd, int, how)
+{
+	return __sys_shutdown(fd, how);
 }
 
 /* A couple of helpful macros for getting the address of the 32/64 bit
@@ -2603,7 +2608,7 @@ SYSCALL_DEFINE2(socketcall, int, call, unsigned long __user *, args)
 				     (int __user *)a[5]);
 		break;
 	case SYS_SHUTDOWN:
-		err = sys_shutdown(a0, a1);
+		err = __sys_shutdown(a0, a1);
 		break;
 	case SYS_SETSOCKOPT:
 		err = __sys_setsockopt(a0, a1, a[2], (char __user *)a[3], a[4]);
