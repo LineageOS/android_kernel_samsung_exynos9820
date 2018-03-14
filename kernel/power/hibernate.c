@@ -710,7 +710,7 @@ int hibernate(void)
 	}
 
 	pr_info("Syncing filesystems ... \n");
-	sys_sync();
+	ksys_sync();
 	pr_info("done.\n");
 
 	error = freeze_processes();
