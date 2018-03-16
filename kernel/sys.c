@@ -1154,7 +1154,7 @@ static void set_special_pids(struct pid *pid)
 		change_pid(curr, PIDTYPE_PGID, pid);
 }
 
-SYSCALL_DEFINE0(setsid)
+int ksys_setsid(void)
 {
 	struct task_struct *group_leader = current->group_leader;
 	struct pid *sid = task_pid(group_leader);
@@ -1185,6 +1185,11 @@ out:
 		sched_autogroup_create_attach(group_leader);
 	}
 	return err;
+}
+
+SYSCALL_DEFINE0(setsid)
+{
+	return ksys_setsid();
 }
 
 DECLARE_RWSEM(uts_sem);
