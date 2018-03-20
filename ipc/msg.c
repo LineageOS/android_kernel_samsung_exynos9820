@@ -857,14 +857,20 @@ out_unlock1:
 	return err;
 }
 
-SYSCALL_DEFINE4(msgsnd, int, msqid, struct msgbuf __user *, msgp, size_t, msgsz,
-		int, msgflg)
+long ksys_msgsnd(int msqid, struct msgbuf __user *msgp, size_t msgsz,
+		 int msgflg)
 {
 	long mtype;
 
 	if (get_user(mtype, &msgp->mtype))
 		return -EFAULT;
 	return do_msgsnd(msqid, mtype, msgp->mtext, msgsz, msgflg);
+}
+
+SYSCALL_DEFINE4(msgsnd, int, msqid, struct msgbuf __user *, msgp, size_t, msgsz,
+		int, msgflg)
+{
+	return ksys_msgsnd(msqid, msgp, msgsz, msgflg);
 }
 
 #ifdef CONFIG_COMPAT
@@ -874,8 +880,8 @@ struct compat_msgbuf {
 	char mtext[1];
 };
 
-COMPAT_SYSCALL_DEFINE4(msgsnd, int, msqid, compat_uptr_t, msgp,
-		       compat_ssize_t, msgsz, int, msgflg)
+long compat_ksys_msgsnd(int msqid, compat_uptr_t msgp,
+		       compat_ssize_t msgsz, int msgflg)
 {
 	struct compat_msgbuf __user *up = compat_ptr(msgp);
 	compat_long_t mtype;
@@ -883,6 +889,12 @@ COMPAT_SYSCALL_DEFINE4(msgsnd, int, msqid, compat_uptr_t, msgp,
 	if (get_user(mtype, &up->mtype))
 		return -EFAULT;
 	return do_msgsnd(msqid, mtype, up->mtext, (ssize_t)msgsz, msgflg);
+}
+
+COMPAT_SYSCALL_DEFINE4(msgsnd, int, msqid, compat_uptr_t, msgp,
+		       compat_ssize_t, msgsz, int, msgflg)
+{
+	return compat_ksys_msgsnd(msqid, msgp, msgsz, msgflg);
 }
 #endif
 
