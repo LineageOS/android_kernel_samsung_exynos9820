@@ -18,9 +18,8 @@ obj-vdso32 := $(addprefix $(obj)/, $(obj-vdso32))
 GCOV_PROFILE := n
 UBSAN_SANITIZE := n
 
-ccflags-y := -shared -fno-common -fno-builtin
-ccflags-y += -nostdlib -Wl,-soname=linux-vdso32.so.1 \
-		$(call cc-ldoption, -Wl$(comma)--hash-style=both)
+ccflags-y := -shared -fno-common -fno-builtin -nostdlib \
+	-Wl,-soname=linux-vdso32.so.1 -Wl,--hash-style=both
 asflags-y := -D__VDSO32__ -s
 
 obj-y += vdso32_wrapper.o
