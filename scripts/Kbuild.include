@@ -190,11 +190,6 @@ cc-if-fullversion = $(gcc-if-fullversion)
 # Usage:  EXTRA_CFLAGS += $(call cc-if-fullversion, -lt, 040502, -O1)
 cc-if-fullversion = $(shell [ $(cc-fullversion) $(1) $(2) ] && echo $(3) || echo $(4))
 
-# cc-ldoption
-# Usage: ldflags += $(call cc-ldoption, -Wl$(comma)--hash-style=both)
-cc-ldoption = $(call try-run,\
-	$(CC) $(1) $(KBUILD_CPPFLAGS) $(CC_OPTION_CFLAGS) -nostdlib -x c /dev/null -o "$$TMP",$(1),$(2))
-
 # ld-option
 # Usage: LDFLAGS += $(call ld-option, -X)
 ld-option = $(call try-run, $(LD) $(LDFLAGS) $(1) -v,$(1),$(2))
