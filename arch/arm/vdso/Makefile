@@ -13,8 +13,7 @@ ccflags-y += -DDISABLE_BRANCH_PROFILING
 ldflags-y = -Bsymbolic --no-undefined -soname=linux-vdso.so.1 \
 	    -z max-page-size=4096 -z common-page-size=4096 \
 	    -nostdlib -shared \
-	    $(call ld-option, --hash-style=sysv) \
-	    $(call ld-option, --build-id) \
+	    --hash-style=sysv --build-id \
 	    -T
 
 obj-$(CONFIG_VDSO) += vdso.o

@@ -50,7 +50,7 @@ $(obj)/vdso.so.dbg: $(src)/vdso.lds $(obj-vdso) FORCE
 # these symbols in the kernel code rather than hand-coded addresses.
 
 SYSCFLAGS_vdso.so.dbg = -shared -s -Wl,-soname=linux-vdso.so.1 \
-                            $(call cc-ldoption, -Wl$(comma)--hash-style=both)
+                            -Wl,--hash-style=both
 SYSCFLAGS_vdso_dummy.o = -r
 $(obj)/vdso-dummy.o: $(src)/vdso.lds $(obj)/vrt_sigreturn.o FORCE
 	$(call if_changed,vdsold)
@@ -112,6 +112,6 @@ $(obj)/vrt_sigreturn32.o: $(obj)/vrt_sigreturn.S FORCE
 $(obj)/vdso32.o: $(obj)/vdso32.so
 
 SYSCFLAGS_vdso32.so.dbg = -m32 -shared -s -Wl,-soname=linux-vdso32.so.1 \
-			    $(call cc-ldoption, -Wl$(comma)--hash-style=both)
+			    -Wl,--hash-style=both
 $(obj)/vdso32.so.dbg: $(src)/vdso.lds $(obj-vdso32) FORCE
 	$(call if_changed,vdsold)
