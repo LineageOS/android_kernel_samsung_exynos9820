@@ -1138,6 +1138,15 @@ out:
 	case FS_IOC_DUMP_FILE_KEY:
 		return fscrypt_sdp_ioctl(filp, cmd, arg);
 #endif
+	case FS_IOC_ENABLE_VERITY:
+		if (!ext4_has_feature_verity(sb))
+			return -EOPNOTSUPP;
+		return fsverity_ioctl_enable(filp, (const void __user *)arg);
+
+	case FS_IOC_MEASURE_VERITY:
+		if (!ext4_has_feature_verity(sb))
+			return -EOPNOTSUPP;
+		return fsverity_ioctl_measure(filp, (void __user *)arg);
 
 	default:
 		return -ENOTTY;
@@ -1216,6 +1225,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case FS_IOC_REMOVE_CHAMBER:
 	case FS_IOC_DUMP_FILE_KEY:
 #endif
+	case FS_IOC_ENABLE_VERITY:
+	case FS_IOC_MEASURE_VERITY:
 		break;
 	default:
 		return -ENOIOCTLCMD;
