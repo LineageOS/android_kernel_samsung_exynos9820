@@ -4981,7 +4981,7 @@ static int wm_adsp_parse_buffer_coeff(struct wm_coeff_ctl *ctl)
 	buf->name = kasprintf(GFP_KERNEL, "%s-dsp-%s", ctl->dsp->part,
 			      (char *)&coeff_v1.name);
 
-	buf->ws = wakeup_source_register(buf->name);
+	buf->ws = wakeup_source_register(NULL, buf->name);
 
 	return val;
 }
@@ -5036,7 +5036,7 @@ static int wm_adsp_buffer_init(struct wm_adsp *dsp)
 			return ret;
 		}
 
-		buf->ws = wakeup_source_register("legacy-buffer");
+		buf->ws = wakeup_source_register(NULL, "legacy-buffer");
 
 	}
 
