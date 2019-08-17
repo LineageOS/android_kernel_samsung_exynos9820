@@ -1472,7 +1472,9 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 					input_info(true, &ts->client->dev, "%s: AOD: %d, %d, %d\n",
 							__func__, ts->scrub_id, ts->scrub_x, ts->scrub_y);
 #endif
-					input_report_key(ts->input_dev, KEY_BLACK_UI_GESTURE, 1);
+					input_report_key(ts->input_dev, KEY_WAKEUP, 1);
+					input_sync(ts->input_dev);
+					input_report_key(ts->input_dev, KEY_WAKEUP, 0);
 					ts->all_aod_tap_count++;
 				} else if (p_gesture_status->gesture_id == SEC_TS_GESTURE_ID_DOUBLETAP_TO_WAKEUP) {
 					input_info(true, &ts->client->dev, "%s: AOT\n", __func__);
