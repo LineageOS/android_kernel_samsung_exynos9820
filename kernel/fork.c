@@ -1924,7 +1924,8 @@ static __latent_entropy struct task_struct *copy_process(
 		goto bad_fork_cleanup_io;
 
 	if (pid != &init_struct_pid) {
-		pid = alloc_pid(p->nsproxy->pid_ns_for_children);
+		pid = alloc_pid(p->nsproxy->pid_ns_for_children, args->set_tid,
+				args->set_tid_size);
 		if (IS_ERR(pid)) {
 			retval = PTR_ERR(pid);
 			goto bad_fork_cleanup_thread;
@@ -2417,6 +2418,7 @@ noinline static int copy_clone_args_from_user(struct kernel_clone_args *kargs,
 {
 	int err;
 	struct clone_args args;
+	pid_t *kset_tid = kargs->set_tid;
 
 	if (unlikely(usize > PAGE_SIZE))
 		return -E2BIG;
@@ -2426,6 +2428,15 @@ noinline static int copy_clone_args_from_user(struct kernel_clone_args *kargs,
 	err = copy_struct_from_user(&args, sizeof(args), uargs, usize);
 	if (err)
 		return err;
+
+	if (unlikely(args.set_tid_size > MAX_PID_NS_LEVEL))
+		return -EINVAL;
+
+	if (unlikely(!args.set_tid && args.set_tid_size > 0))
+		return -EINVAL;
+
+	if (unlikely(args.set_tid && args.set_tid_size == 0))
+		return -EINVAL;
 
 	/*
 	 * Verify that higher 32bits of exit_signal are unset and that
@@ -2444,7 +2455,15 @@ noinline static int copy_clone_args_from_user(struct kernel_clone_args *kargs,
 		.stack		= args.stack,
 		.stack_size	= args.stack_size,
 		.tls		= args.tls,
+		.set_tid_size	= args.set_tid_size,
 	};
+
+	if (args.set_tid &&
+		copy_from_user(kset_tid, u64_to_user_ptr(args.set_tid),
+			(kargs->set_tid_size * sizeof(pid_t))))
+		return -EFAULT;
+
+	kargs->set_tid = kset_tid;
 
 	return 0;
 }
@@ -2520,6 +2539,9 @@ SYSCALL_DEFINE2(clone3, struct clone_args __user *, uargs, size_t, size)
 	int err;
 
 	struct kernel_clone_args kargs;
+	pid_t set_tid[MAX_PID_NS_LEVEL];
+
+	kargs.set_tid = set_tid;
 
 	err = copy_clone_args_from_user(&kargs, uargs, size);
 	if (err)
