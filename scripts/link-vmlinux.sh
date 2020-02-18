@@ -417,7 +417,7 @@ fi
 
 if [ -n "${CONFIG_EXYNOS_FMP_FIPS}" ]; then
     echo '  FIPS : Generating hmac of fmp and updating vmlinux... '
-	PYTHONDONTWRITEBYTECODE=0 "${srctree}/scripts/fmp/fips_fmp_integrity.py" "${objtree}/vmlinux"
+	PYTHONDONTWRITEBYTECODE=0 "${srctree}/scripts/fmp/fips_fmp_integrity.py" "${objtree}/vmlinux" "${CROSS_COMPILE}readelf"
 fi
 
 # We made a new kernel - delete old version file
