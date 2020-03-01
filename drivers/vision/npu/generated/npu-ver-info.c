@@ -1,1 +1,1 @@
-#include "npu-ver-info~"
+#include "npu-ver-info-default.c"
