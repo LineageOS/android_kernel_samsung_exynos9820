@@ -239,8 +239,6 @@ source "drivers/fingerprint/Kconfig"
 
 source "drivers/samsung/Kconfig"
 
-source "drivers/kperfmon/Kconfig"
-
 source "drivers/spu_verify/Kconfig"
 
 endmenu
