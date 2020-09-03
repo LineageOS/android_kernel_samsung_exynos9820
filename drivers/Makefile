@@ -204,10 +204,6 @@ obj-$(CONFIG_EXYNOS_BTS)	+= bts/
 # Mobicore driver
 obj-$(CONFIG_TRUSTONIC_TEE)     += gud/
 
-# FIVE TEE driver
-obj-$(CONFIG_FIVE_TEE_DRIVER)	+= security/samsung/five_tee_driver/
-obj-$(CONFIG_ICD)		+= security/samsung/icdrv/
-
 # vision driver
 obj-$(CONFIG_VISION_SUPPORT)	+= vision/
 
@@ -237,9 +233,6 @@ obj-$(CONFIG_UH)		+= uh/
 obj-y				+= kperfmon/
 
 obj-$(CONFIG_SEC_EXT)		+= samsung/
-
-#TZIC
-obj-y  += security/samsung/tzic/
 
 # SPU signature verify
 obj-$(CONFIG_SPU_VERIFY) += spu_verify/
