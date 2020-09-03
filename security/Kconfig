@@ -235,7 +235,6 @@ source security/yama/Kconfig
 source security/mstdrv/Kconfig
 
 source security/integrity/Kconfig
-source security/proca/Kconfig
 
 choice
 	prompt "Default security module"
