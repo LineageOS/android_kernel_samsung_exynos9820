@@ -1724,11 +1724,13 @@ submit_and_realloc:
 			bio = NULL;
 		}
 
+#ifdef CONFIG_DDAR
 		/* DDAR changes */
 		if (!fscrypt_dd_can_merge_bio(bio, mapping)) {
 			__submit_bio(F2FS_I_SB(inode), bio, DATA);
 			bio = NULL;
 		}
+#endif
 
 		if (bio == NULL) {
 			bio = f2fs_grab_read_bio(inode, block_nr, nr_pages,

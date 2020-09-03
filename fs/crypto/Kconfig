@@ -29,12 +29,3 @@ config FS_INLINE_ENCRYPTION
 	default y
 	help
 	  This option enables inline encryption to support inline crypto H/W.
-
-config FSCRYPT_SDP
-	bool "Sensitive Data Protection for Per-file-encryption"
-	depends on FS_ENCRYPTION
-	depends on SDP
-	help
-	  Enable SDP functional to fscrypto module.
-	  This feature is supporting "Data-At-Rest" for file systems using
-	  Per-file-encryption being controlled by SDP user status.
