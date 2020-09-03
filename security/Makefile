@@ -30,6 +30,3 @@ obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
 # Object integrity file lists
 subdir-$(CONFIG_INTEGRITY)		+= integrity
 obj-$(CONFIG_INTEGRITY)			+= integrity/
-
-# MST driver
-obj-$(CONFIG_MST_LDO)	  += mstdrv/
