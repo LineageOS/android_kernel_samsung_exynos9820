@@ -1300,7 +1300,7 @@ static const struct {
 #define _S(x) #x
 #define S(x) _S(x)
 
-#define SOFT_AP_IF_NAME         "swlan0"
+#define SOFT_AP_IF_NAME         "wlan1"
 #ifdef P2P_LISTEN_OFFLOADING
 void wl_cfg80211_cancel_p2plo(struct bcm_cfg80211 *cfg);
 #endif /* P2P_LISTEN_OFFLOADING */

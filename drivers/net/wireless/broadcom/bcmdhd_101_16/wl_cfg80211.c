@@ -1241,7 +1241,7 @@ static const rsn_akm_wpa_auth_entry_t rsn_akm_wpa_auth_lookup_tbl[] = {
 #define _S(x) #x
 #define S(x) _S(x)
 
-#define SOFT_AP_IF_NAME         "swlan0"
+#define SOFT_AP_IF_NAME         "wlan1"
 
 /* watchdog timer for disconnecting when fw is not associated for FW_ASSOC_WATCHDOG_TIME ms */
 uint32 fw_assoc_watchdog_ms = 0;
