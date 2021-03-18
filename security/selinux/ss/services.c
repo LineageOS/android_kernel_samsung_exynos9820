@@ -69,6 +69,12 @@
 #include "xfrm.h"
 #include "ebitmap.h"
 #include "audit.h"
+#ifdef CONFIG_UH
+#include <linux/uh.h>
+#ifdef CONFIG_RKP_KDP
+#include <linux/rkp.h>
+#endif
+#endif
 
 /* Policy capability names */
 char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
@@ -80,6 +86,7 @@ char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
 	"nnp_nosuid_transition"
 };
 
+int selinux_android_netlink_route;
 int selinux_policycap_netpeer;
 int selinux_policycap_openperm;
 int selinux_policycap_extsockclass;
@@ -91,7 +98,11 @@ static DEFINE_RWLOCK(policy_rwlock);
 
 static struct sidtab sidtab;
 struct policydb policydb;
+#if (defined CONFIG_RKP_KDP && defined CONFIG_SAMSUNG_PRODUCT_SHIP)
+int ss_initialized __kdp_ro;
+#else
 int ss_initialized;
+#endif
 
 /*
  * The largest sequence number that has been used when
@@ -760,6 +771,13 @@ out:
 	kfree(n);
 	kfree(t);
 
+// [ SEC_SELINUX_PORTING_COMMON
+#ifdef CONFIG_ALWAYS_ENFORCE
+#if !defined(CONFIG_RKP_KDP)
+	selinux_enforcing = 1;
+#endif
+#endif
+// ] SEC_SELINUX_PORTING_COMMON
 	if (!selinux_enforcing)
 		return 0;
 	return -EPERM;
@@ -1543,6 +1561,14 @@ out:
 	kfree(s);
 	kfree(t);
 	kfree(n);
+
+// [ SEC_SELINUX_PORTING_COMMON
+#ifdef CONFIG_ALWAYS_ENFORCE
+#if !defined(CONFIG_RKP_KDP)
+	selinux_enforcing = 1;
+#endif
+#endif
+// ] SEC_SELINUX_PORTING_COMMON
 	if (!selinux_enforcing)
 		return 0;
 	return -EACCES;
@@ -1834,6 +1860,11 @@ static inline int convert_context_handle_invalid_context(struct context *context
 	char *s;
 	u32 len;
 
+// [ SEC_SELINUX_PORTING_COMMON
+#ifdef CONFIG_ALWAYS_ENFORCE
+	selinux_enforcing = 1;
+#endif
+// ] SEC_SELINUX_PORTING_COMMON
 	if (selinux_enforcing)
 		return -EINVAL;
 
@@ -2026,6 +2057,8 @@ static void security_load_policycaps(void)
 			pr_info("SELinux:  unknown policy capability %u\n",
 				i);
 	}
+	selinux_android_netlink_route = policydb.android_netlink_route;
+	selinux_nlmsg_init();
 }
 
 static int security_preserve_bools(struct policydb *p);
@@ -2088,7 +2121,11 @@ int security_load_policy(void *data, size_t len)
 		}
 
 		security_load_policycaps();
+#if (defined CONFIG_RKP_KDP && defined CONFIG_SAMSUNG_PRODUCT_SHIP)
+		uh_call(UH_APP_RKP, RKP_KDP_X60, (u64)&ss_initialized, 1, 0, 0);
+#else
 		ss_initialized = 1;
+#endif
 		seqno = ++latest_granting;
 		selinux_complete_init();
 		avc_ss_reset(seqno);

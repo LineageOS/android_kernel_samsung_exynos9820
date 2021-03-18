@@ -264,6 +264,7 @@ struct binder_node_debug_info {
 #define BINDER_VERSION			_IOWR('b', 9, struct binder_version)
 #define BINDER_GET_NODE_DEBUG_INFO	_IOWR('b', 11, struct binder_node_debug_info)
 #define BINDER_SET_CONTEXT_MGR_EXT	_IOW('b', 13, struct flat_binder_object)
+#define BINDER_SET_SYSTEM_SERVER_PID		_IOW('b', 14, __u32)
 
 /*
  * NOTE: Two special error codes you should check for when calling
@@ -327,6 +328,7 @@ struct binder_transaction_data_secctx {
 	binder_uintptr_t secctx;
 };
 
+
 struct binder_transaction_data_sg {
 	struct binder_transaction_data transaction_data;
 	binder_size_t buffers_size;
@@ -361,7 +363,6 @@ enum binder_driver_return_protocol {
 
 	BR_OK = _IO('r', 1),
 	/* No parameters! */
-
 	BR_TRANSACTION_SEC_CTX = _IOR('r', 2,
 				      struct binder_transaction_data_secctx),
 	/*

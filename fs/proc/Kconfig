@@ -72,6 +72,14 @@ config PROC_PAGE_MONITOR
 	  /proc/kpagecount, and /proc/kpageflags. Disabling these
           interfaces will reduce the size of the kernel by approximately 4kb.
 
+config PROC_AVC
+	bool "support (/proc/avc_msg)"
+	default n
+	help
+	  support logging audit avc message
+          When PROC_AVC config is turned on, proc/avc_msg path is created and then,
+          can use it to analyze the SEandroid denial.
+
 config PROC_CHILDREN
 	bool "Include /proc/<pid>/task/<tid>/children file"
 	default n
@@ -88,3 +96,26 @@ config PROC_UID
 	depends on PROC_FS && RT_MUTEXES
 	help
 	Provides aggregated per-uid information under /proc/uid.
+
+config PROC_FSLOG
+	bool "Enable FS logs for improving filesystem debug"
+	depends on PROC_FS
+	select PROC_STLOG
+	select PROC_DLOG
+	default y
+
+config PROC_STLOG
+	bool "Enable Storage log"
+
+config PROC_DLOG
+	bool "Enable delete logs for improving filesystem debug"
+
+config PROC_PARSE_OPTION_ON_MOUNT
+	bool "Parsing mount option on mount"
+	depends on PROC_FS
+	default y
+
+config PROC_TRIGGER_SQLITE_BUG
+	bool "Trigger bug for SQLite debugging"
+	depends on PROC_FS
+	default y if !SAMSUNG_PRODUCT_SHIP && ANDROID_VERSION > "90000"

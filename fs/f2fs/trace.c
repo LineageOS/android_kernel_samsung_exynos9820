@@ -1,12 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * f2fs IO tracer
  *
  * Copyright (c) 2014 Motorola Mobility
  * Copyright (c) 2014 Jaegeuk Kim <jaegeuk@kernel.org>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>
@@ -61,7 +58,6 @@ void f2fs_trace_pid(struct page *page)
 
 	set_page_private(page, (unsigned long)pid);
 
-retry:
 	if (radix_tree_preload(GFP_NOFS))
 		return;
 
@@ -72,12 +68,7 @@ retry:
 	if (p)
 		radix_tree_delete(&pids, pid);
 
-	if (radix_tree_insert(&pids, pid, current)) {
-		spin_unlock(&pids_lock);
-		radix_tree_preload_end();
-		cond_resched();
-		goto retry;
-	}
+	f2fs_radix_tree_insert(&pids, pid, current);
 
 	trace_printk("%3x:%3x %4x %-16s\n",
 			MAJOR(inode->i_sb->s_dev), MINOR(inode->i_sb->s_dev),

@@ -44,6 +44,12 @@ KBUILD_DEFCONFIG := defconfig
 # Check for binutils support for specific extensions
 lseinstr := $(call as-instr,.arch_extension lse,-DCONFIG_AS_LSE=1)
 
+ifeq ($(CONFIG_SEC_ARM64_LSE_ATOMICS),y)
+  ifeq ($(cc-name),clang)
+lseinstr := -DCONFIG_AS_LSE=1
+  endif
+endif
+
 ifeq ($(CONFIG_ARM64_LSE_ATOMICS), y)
   ifeq ($(lseinstr),)
 $(warning LSE atomics not supported by binutils)
@@ -168,6 +174,9 @@ zinstall install:
 	$(Q)$(MAKE) $(build)=$(boot) $@
 
 %.dtb: scripts
+	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+
+%.dtbo: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
 
 PHONY += dtbs dtbs_install

@@ -517,15 +517,17 @@ EXPORT_SYMBOL(ip_idents_reserve);
 
 void __ip_select_ident(struct net *net, struct iphdr *iph, int segs)
 {
-	static u32 ip_idents_hashrnd __read_mostly;
 	u32 hash, id;
 
-	net_get_random_once(&ip_idents_hashrnd, sizeof(ip_idents_hashrnd));
+	/* Note the following code is not safe, but this is okay. */
+	if (unlikely(siphash_key_is_zero(&net->ipv4.ip_id_key)))
+		get_random_bytes(&net->ipv4.ip_id_key,
+				 sizeof(net->ipv4.ip_id_key));
 
-	hash = jhash_3words((__force u32)iph->daddr,
+	hash = siphash_3u32((__force u32)iph->daddr,
 			    (__force u32)iph->saddr,
-			    iph->protocol ^ net_hash_mix(net),
-			    ip_idents_hashrnd);
+			    iph->protocol,
+			    &net->ipv4.ip_id_key);
 	id = ip_idents_reserve(hash, segs);
 	iph->id = htons(id);
 }
@@ -961,10 +963,12 @@ static int ip_error(struct sk_buff *skb)
 		switch (rt->dst.error) {
 		case EHOSTUNREACH:
 			__IP_INC_STATS(net, IPSTATS_MIB_INADDRERRORS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS6);
 			break;
 
 		case ENETUNREACH:
 			__IP_INC_STATS(net, IPSTATS_MIB_INNOROUTES);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INNOROUTES);
 			break;
 		}
 		goto out;
@@ -980,6 +984,7 @@ static int ip_error(struct sk_buff *skb)
 	case ENETUNREACH:
 		code = ICMP_NET_UNREACH;
 		__IP_INC_STATS(net, IPSTATS_MIB_INNOROUTES);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INNOROUTES1);
 		break;
 	case EACCES:
 		code = ICMP_PKT_FILTERED;
@@ -1192,11 +1197,39 @@ static struct dst_entry *ipv4_dst_check(struct dst_entry *dst, u32 cookie)
 	return dst;
 }
 
+static void ipv4_send_dest_unreach(struct sk_buff *skb)
+{
+	struct ip_options opt;
+	int res;
+
+	/* Recompile ip options since IPCB may not be valid anymore.
+	 * Also check we have a reasonable ipv4 header.
+	 */
+	if (!pskb_network_may_pull(skb, sizeof(struct iphdr)) ||
+	    ip_hdr(skb)->version != 4 || ip_hdr(skb)->ihl < 5)
+		return;
+
+	memset(&opt, 0, sizeof(opt));
+	if (ip_hdr(skb)->ihl > 5) {
+		if (!pskb_network_may_pull(skb, ip_hdr(skb)->ihl * 4))
+			return;
+		opt.optlen = ip_hdr(skb)->ihl * 4 - sizeof(struct iphdr);
+
+		rcu_read_lock();
+		res = __ip_options_compile(dev_net(skb->dev), &opt, skb, NULL);
+		rcu_read_unlock();
+
+		if (res)
+			return;
+	}
+	__icmp_send(skb, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH, 0, &opt);
+}
+
 static void ipv4_link_failure(struct sk_buff *skb)
 {
 	struct rtable *rt;
 
-	icmp_send(skb, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH, 0);
+	ipv4_send_dest_unreach(skb);
 
 	rt = skb_rtable(skb);
 	if (rt)

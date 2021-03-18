@@ -74,6 +74,9 @@ extern void __delayacct_blkio_start(void);
 extern void __delayacct_blkio_end(struct task_struct *);
 extern int __delayacct_add_tsk(struct taskstats *, struct task_struct *);
 extern __u64 __delayacct_blkio_ticks(struct task_struct *);
+#ifdef CONFIG_PAGE_BOOST
+extern __u64 __delayacct_blkio_nsecs(struct task_struct *);
+#endif
 extern void __delayacct_freepages_start(void);
 extern void __delayacct_freepages_end(void);
 
@@ -144,6 +147,15 @@ static inline __u64 delayacct_blkio_ticks(struct task_struct *tsk)
 	return 0;
 }
 
+#ifdef CONFIG_PAGE_BOOST
+static inline __u64 delayacct_blkio_nsecs(struct task_struct *tsk)
+{
+	if (tsk->delays)
+		return __delayacct_blkio_nsecs(tsk);
+	return 0;
+}
+#endif
+
 static inline void delayacct_freepages_start(void)
 {
 	if (current->delays)
@@ -176,6 +188,10 @@ static inline int delayacct_add_tsk(struct taskstats *d,
 { return 0; }
 static inline __u64 delayacct_blkio_ticks(struct task_struct *tsk)
 { return 0; }
+#ifdef CONFIG_PAGE_BOOST
+static inline __u64 delayacct_blkio_nsecs(struct task_struct *tsk)
+{ return 0; }
+#endif
 static inline int delayacct_is_task_waiting_on_io(struct task_struct *p)
 { return 0; }
 static inline void delayacct_freepages_start(void)

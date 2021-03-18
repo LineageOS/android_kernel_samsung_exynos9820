@@ -172,6 +172,7 @@ static bool ip6_parse_tlv(const struct tlvtype_proc *procs, struct sk_buff *skb)
 	if (len == 0)
 		return true;
 bad:
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS18);
 	kfree_skb(skb);
 	return false;
 }
@@ -266,6 +267,7 @@ static int ipv6_destopt_rcv(struct sk_buff *skb)
 				 ((skb_transport_header(skb)[1] + 1) << 3)))) {
 		__IP6_INC_STATS(dev_net(dst->dev), ip6_dst_idev(dst),
 				IPSTATS_MIB_INHDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS4);
 		kfree_skb(skb);
 		return -1;
 	}
@@ -395,6 +397,7 @@ looped_back:
 		if (pskb_expand_head(skb, 0, 0, GFP_ATOMIC)) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_OUTDISCARDS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_OUTDISCARDS);
 			kfree_skb(skb);
 			return -1;
 		}
@@ -467,6 +470,7 @@ static int ipv6_rthdr_rcv(struct sk_buff *skb)
 				 ((skb_transport_header(skb)[1] + 1) << 3)))) {
 		__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 				IPSTATS_MIB_INHDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS5);
 		kfree_skb(skb);
 		return -1;
 	}
@@ -477,6 +481,7 @@ static int ipv6_rthdr_rcv(struct sk_buff *skb)
 	    skb->pkt_type != PACKET_HOST) {
 		__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 				IPSTATS_MIB_INADDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS);
 		kfree_skb(skb);
 		return -1;
 	}
@@ -496,6 +501,7 @@ looped_back:
 			if (!addr) {
 				__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 						IPSTATS_MIB_INADDRERRORS);
+				DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS1);
 				kfree_skb(skb);
 				return -1;
 			}
@@ -522,6 +528,7 @@ looped_back:
 		if (hdr->hdrlen != 2 || hdr->segments_left != 1) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_INHDRERRORS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS6);
 			kfree_skb(skb);
 			return -1;
 		}
@@ -555,6 +562,7 @@ looped_back:
 		if (pskb_expand_head(skb, 0, 0, GFP_ATOMIC)) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_OUTDISCARDS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_OUTDISCARDS1);
 			kfree_skb(skb);
 			return -1;
 		}
@@ -578,12 +586,14 @@ looped_back:
 				     IPPROTO_ROUTING) < 0) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_INADDRERRORS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS2);
 			kfree_skb(skb);
 			return -1;
 		}
 		if (!ipv6_chk_home_addr(dev_net(skb_dst(skb)->dev), addr)) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_INADDRERRORS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS3);
 			kfree_skb(skb);
 			return -1;
 		}
@@ -596,6 +606,7 @@ looped_back:
 	if (ipv6_addr_is_multicast(addr)) {
 		__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 				IPSTATS_MIB_INADDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INADDRERRORS4);
 		kfree_skb(skb);
 		return -1;
 	}
@@ -616,6 +627,7 @@ looped_back:
 		if (ipv6_hdr(skb)->hop_limit <= 1) {
 			__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)),
 					IPSTATS_MIB_INHDRERRORS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS7);
 			icmpv6_send(skb, ICMPV6_TIME_EXCEED, ICMPV6_EXC_HOPLIMIT,
 				    0);
 			kfree_skb(skb);
@@ -631,6 +643,7 @@ looped_back:
 
 unknown_rh:
 	__IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)), IPSTATS_MIB_INHDRERRORS);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS8);
 	icmpv6_param_prob(skb, ICMPV6_HDR_FIELD,
 			  (&hdr->type) - skb_network_header(skb));
 	return -1;
@@ -730,6 +743,7 @@ static bool ipv6_hop_jumbo(struct sk_buff *skb, int optoff)
 				    nh[optoff+1]);
 		__IP6_INC_STATS(net, ipv6_skb_idev(skb),
 				IPSTATS_MIB_INHDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS9);
 		goto drop;
 	}
 
@@ -737,12 +751,14 @@ static bool ipv6_hop_jumbo(struct sk_buff *skb, int optoff)
 	if (pkt_len <= IPV6_MAXPLEN) {
 		__IP6_INC_STATS(net, ipv6_skb_idev(skb),
 				IPSTATS_MIB_INHDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS10);
 		icmpv6_param_prob(skb, ICMPV6_HDR_FIELD, optoff+2);
 		return false;
 	}
 	if (ipv6_hdr(skb)->payload_len) {
 		__IP6_INC_STATS(net, ipv6_skb_idev(skb),
 				IPSTATS_MIB_INHDRERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS11);
 		icmpv6_param_prob(skb, ICMPV6_HDR_FIELD, optoff);
 		return false;
 	}
@@ -750,6 +766,7 @@ static bool ipv6_hop_jumbo(struct sk_buff *skb, int optoff)
 	if (pkt_len > skb->len - sizeof(struct ipv6hdr)) {
 		__IP6_INC_STATS(net, ipv6_skb_idev(skb),
 				IPSTATS_MIB_INTRUNCATEDPKTS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INTRUNCATEDPKTS);
 		goto drop;
 	}
 
@@ -815,6 +832,7 @@ int ipv6_parse_hopopts(struct sk_buff *skb)
 	if (!pskb_may_pull(skb, sizeof(struct ipv6hdr) + 8) ||
 	    !pskb_may_pull(skb, (sizeof(struct ipv6hdr) +
 				 ((skb_transport_header(skb)[1] + 1) << 3)))) {
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS12);
 		kfree_skb(skb);
 		return -1;
 	}

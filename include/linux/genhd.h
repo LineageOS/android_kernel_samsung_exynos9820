@@ -81,6 +81,8 @@ struct partition {
 	__le32 nr_sects;		/* nr of sectors in partition */
 } __attribute__((packed));
 
+#define FSYNC_TIME_GROUP_MAX 4
+#define IO_SIZE_GROUP_MAX 8
 struct disk_stats {
 	unsigned long sectors[2];	/* READs and WRITEs */
 	unsigned long ios[2];
@@ -88,6 +90,10 @@ struct disk_stats {
 	unsigned long ticks[2];
 	unsigned long io_ticks;
 	unsigned long time_in_queue;
+	unsigned long discard_sectors;
+	unsigned long discard_ios;
+	unsigned long flush_ios;
+	unsigned long size_cnt[3][IO_SIZE_GROUP_MAX]; /* READs, WRITEs and DISCARDs */
 };
 
 #define PARTITION_META_INFO_VOLNAMELTH	64
@@ -141,6 +147,10 @@ struct hd_struct {
 #define GENHD_FL_NATIVE_CAPACITY		128
 #define GENHD_FL_BLOCK_EVENTS_ON_EXCL_WRITE	256
 #define GENHD_FL_NO_PART_SCAN			512
+#ifdef CONFIG_USB_STORAGE_DETECT
+#define GENHD_FL_MEDIA_PRESENT	1024
+#define GENHD_FL_IF_USB	2048
+#endif
 
 enum {
 	DISK_EVENT_MEDIA_CHANGE			= 1 << 0, /* media changed */
@@ -168,6 +178,15 @@ struct blk_integrity {
 };
 
 #endif	/* CONFIG_BLK_DEV_INTEGRITY */
+
+struct accumulated_stats {
+	struct timespec uptime;
+	unsigned long sectors[3];	/* READ, WRITE, DISCARD */
+	unsigned long ios[3];
+	unsigned long size_cnt[3][IO_SIZE_GROUP_MAX];
+	unsigned long fsync_time_cnt[FSYNC_TIME_GROUP_MAX];
+	unsigned long iot;		/* sec */
+};
 
 struct gendisk {
 	/* major, first_minor and minors are input parameters only,
@@ -202,6 +221,8 @@ struct gendisk {
 	struct timer_rand_state *random;
 	atomic_t sync_io;		/* RAID */
 	struct disk_events *ev;
+	struct accumulated_stats accios;
+	unsigned long hiotime[3]; /* LOW, MID AND HIGH */
 #ifdef  CONFIG_BLK_DEV_INTEGRITY
 	struct kobject integrity_kobj;
 #endif	/* CONFIG_BLK_DEV_INTEGRITY */
@@ -372,6 +393,16 @@ void part_dec_in_flight(struct request_queue *q, struct hd_struct *part,
 			int rw);
 void part_inc_in_flight(struct request_queue *q, struct hd_struct *part,
 			int rw);
+
+static inline int part_in_flight_read(struct hd_struct *part)
+{
+	return atomic_read(&part->in_flight[0]);
+}
+
+static inline int part_in_flight_write(struct hd_struct *part)
+{
+	return atomic_read(&part->in_flight[1]);
+}
 
 static inline struct partition_meta_info *alloc_part_info(struct gendisk *disk)
 {

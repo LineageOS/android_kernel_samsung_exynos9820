@@ -319,6 +319,8 @@ int mmc_of_parse(struct mmc_host *host)
 		host->caps2 |= MMC_CAP2_HS400_1_2V | MMC_CAP2_HS200_1_2V_SDR;
 	if (device_property_read_bool(dev, "mmc-hs400-enhanced-strobe"))
 		host->caps2 |= MMC_CAP2_HS400_ES;
+	if (device_property_read_bool(dev, "skip-init-mmc-scan"))
+		host->caps2 |= MMC_CAP2_SKIP_INIT_SCAN;
 	if (device_property_read_bool(dev, "no-sdio"))
 		host->caps2 |= MMC_CAP2_NO_SDIO;
 	if (device_property_read_bool(dev, "no-sd"))
@@ -383,6 +385,10 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 
 	spin_lock_init(&host->lock);
 	init_waitqueue_head(&host->wq);
+	host->wlock_name = kasprintf(GFP_KERNEL,
+			"%s_detect", mmc_hostname(host));
+	wake_lock_init(&host->detect_wake_lock, WAKE_LOCK_SUSPEND,
+			host->wlock_name);
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 	INIT_DELAYED_WORK(&host->sdio_irq_work, sdio_irq_work);
 	setup_timer(&host->retune_timer, mmc_retune_timer, (unsigned long)host);
@@ -471,6 +477,7 @@ EXPORT_SYMBOL(mmc_remove_host);
 void mmc_free_host(struct mmc_host *host)
 {
 	mmc_pwrseq_free(host);
+	wake_lock_destroy(&host->detect_wake_lock);
 	put_device(&host->class_dev);
 }
 

@@ -66,6 +66,7 @@ struct uart_ops {
 	void		(*set_ldisc)(struct uart_port *, struct ktermios *);
 	void		(*pm)(struct uart_port *, unsigned int state,
 			      unsigned int oldstate);
+	void		(*wake_peer)(struct uart_port *);
 
 	/*
 	 * Return a string describing the type of the port
@@ -291,7 +292,7 @@ struct uart_state {
 	struct uart_port	*uart_port;
 };
 
-#define UART_XMIT_SIZE	PAGE_SIZE
+#define UART_XMIT_SIZE	(PAGE_SIZE * 4)
 
 
 /* number of characters left in xmit buffer before we ask for more */

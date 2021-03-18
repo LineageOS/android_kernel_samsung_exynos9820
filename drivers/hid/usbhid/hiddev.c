@@ -37,6 +37,9 @@
 #include <linux/compat.h>
 #include <linux/vmalloc.h>
 #include <linux/nospec.h>
+#ifdef CONFIG_USB_HOST_SAMSUNG_FEATURE
+#include <linux/completion.h>
+#endif
 #include "usbhid.h"
 
 #ifdef CONFIG_USB_DYNAMIC_MINORS
@@ -297,6 +300,14 @@ static int hiddev_open(struct inode *inode, struct file *file)
 	spin_unlock_irq(&list->hiddev->list_lock);
 
 	mutex_lock(&hiddev->existancelock);
+	/*
+	 * recheck exist with existance lock held to
+	 * avoid opening a disconnected device
+	 */
+	if (!list->hiddev->exist) {
+		res = -ENODEV;
+		goto bail_unlock;
+	}
 	if (!list->hiddev->open++)
 		if (list->hiddev->exist) {
 			struct hid_device *hid = hiddev->hid;
@@ -313,6 +324,10 @@ bail_normal_power:
 	hid_hw_power(hid, PM_HINT_NORMAL);
 bail_unlock:
 	mutex_unlock(&hiddev->existancelock);
+
+	spin_lock_irq(&list->hiddev->list_lock);
+	list_del(&list->node);
+	spin_unlock_irq(&list->hiddev->list_lock);
 bail:
 	file->private_data = NULL;
 	vfree(list);
@@ -948,6 +963,17 @@ void hiddev_disconnect(struct hid_device *hid)
 {
 	struct hiddev *hiddev = hid->hiddev;
 	struct usbhid_device *usbhid = hid->driver_data;
+
+#ifdef CONFIG_USB_HOST_SAMSUNG_FEATURE
+	hid_info(hid, "%s\n", __func__);
+	if (usbhid->intf->usb_dev->power.is_suspended) {
+		hid_info(hid, "%s is_suspend+\n", __func__);
+		wait_for_completion_timeout
+			(&usbhid->intf->usb_dev->power.completion,
+				msecs_to_jiffies(1500));
+		hid_info(hid, "%s is_suspend-\n", __func__);
+	}
+#endif
 
 	usb_deregister_dev(usbhid->intf, &hiddev_class);
 

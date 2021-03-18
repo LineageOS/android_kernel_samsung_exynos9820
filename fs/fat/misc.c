@@ -8,6 +8,46 @@
 
 #include "fat.h"
 
+#ifdef CONFIG_FAT_UEVENT
+static struct kobject fat_uevent_kobj;
+
+int fat_uevent_init(struct kset *fat_kset)
+{
+	int err;
+	struct kobj_type *ktype = get_ktype(&fat_kset->kobj);
+
+	fat_uevent_kobj.kset = fat_kset;
+	err = kobject_init_and_add(&fat_uevent_kobj, ktype, NULL, "uevent");
+	if (err)
+		pr_err("FAT-fs Unable to create fat uevent kobj\n");
+
+	return err;
+}
+
+void fat_uevent_uninit(void)
+{
+	kobject_del(&fat_uevent_kobj);
+	memset(&fat_uevent_kobj, 0, sizeof(struct kobject));
+}
+
+void fat_uevent_ro_remount(struct super_block *sb)
+{
+	struct block_device *bdev = sb->s_bdev;
+	dev_t bd_dev = bdev ? bdev->bd_dev : 0;
+
+	char major[16], minor[16];
+	char *envp[] = { major, minor, NULL };
+
+	snprintf(major, sizeof(major), "MAJOR=%d", MAJOR(bd_dev));
+	snprintf(minor, sizeof(minor), "MINOR=%d", MINOR(bd_dev));
+
+	kobject_uevent_env(&fat_uevent_kobj, KOBJ_CHANGE, envp);
+
+	ST_LOG("FAT-fs (%s[%d:%d]): Uevent triggered\n",
+			sb->s_id, MAJOR(bd_dev), MINOR(bd_dev));
+}
+#endif
+
 /*
  * fat_fs_error reports a file system problem that might indicate fa data
  * corruption/inconsistency. Depending on 'errors' mount option the
@@ -21,20 +61,34 @@ void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 	struct fat_mount_options *opts = &MSDOS_SB(sb)->options;
 	va_list args;
 	struct va_format vaf;
+	struct block_device *bdev = sb->s_bdev;
+	dev_t bd_dev = bdev ? bdev->bd_dev : 0;
 
 	if (report) {
 		va_start(args, fmt);
 		vaf.fmt = fmt;
 		vaf.va = &args;
-		fat_msg(sb, KERN_ERR, "error, %pV", &vaf);
+		printk(KERN_ERR "FAT-fs (%s[%d:%d]): error, %pV\n",
+				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
+
+		if (opts->errors == FAT_ERRORS_RO && !sb_rdonly(sb))
+				ST_LOG("FAT-fs (%s[%d:%d]): error, %pV\n",
+				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
 		va_end(args);
 	}
 
 	if (opts->errors == FAT_ERRORS_PANIC)
-		panic("FAT-fs (%s): fs panic from previous error\n", sb->s_id);
+		panic("FAT-fs (%s[%d:%d]): fs panic from previous error\n",
+				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev));
 	else if (opts->errors == FAT_ERRORS_RO && !sb_rdonly(sb)) {
 		sb->s_flags |= MS_RDONLY;
-		fat_msg(sb, KERN_ERR, "Filesystem has been set read-only");
+		printk(KERN_ERR "FAT-fs (%s[%d:%d]): Filesystem has been "
+				"set read-only\n",
+				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev));
+
+		ST_LOG("FAT-fs (%s[%d:%d]): Filesystem has been set read-only\n",
+				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev));
+		fat_uevent_ro_remount(sb);
 	}
 }
 EXPORT_SYMBOL_GPL(__fat_fs_error);
@@ -47,11 +101,18 @@ void fat_msg(struct super_block *sb, const char *level, const char *fmt, ...)
 {
 	struct va_format vaf;
 	va_list args;
+	struct block_device *bdev = sb->s_bdev;
+	dev_t bd_dev = bdev ? bdev->bd_dev : 0;
 
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
-	printk("%sFAT-fs (%s): %pV\n", level, sb->s_id, &vaf);
+	if (!strncmp(level, KERN_ERR, sizeof(KERN_ERR)))
+		printk_ratelimited("%sFAT-fs (%s[%d:%d]): %pV\n", level,
+			sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
+	else
+		printk("%sFAT-fs (%s[%d:%d]): %pV\n", level,
+			sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
 	va_end(args);
 }
 
@@ -85,7 +146,7 @@ int fat_clusters_flush(struct super_block *sb)
 			fsinfo->free_clusters = cpu_to_le32(sbi->free_clusters);
 		if (sbi->prev_free != -1)
 			fsinfo->next_cluster = cpu_to_le32(sbi->prev_free);
-		mark_buffer_dirty(bh);
+		mark_buffer_dirty_sync(bh);
 	}
 	brelse(bh);
 

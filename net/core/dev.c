@@ -145,6 +145,7 @@
 #include <linux/crash_dump.h>
 #include <linux/sctp.h>
 #include <net/udp_tunnel.h>
+#include <linux/linkforward.h>
 
 #include "net-sysfs.h"
 
@@ -383,6 +384,11 @@ static inline void netdev_set_addr_lockdep_class(struct net_device *dev)
 
 static inline struct list_head *ptype_head(const struct packet_type *pt)
 {
+	struct list_head *ret = dropdump_ptype_head(pt);
+
+	if (unlikely(ret))
+		return ret;
+
 	if (pt->type == htons(ETH_P_ALL))
 		return pt->dev ? &pt->dev->ptype_all : &ptype_all;
 	else
@@ -3906,6 +3912,8 @@ drop:
 	local_irq_restore(flags);
 
 	atomic_long_inc(&skb->dev->rx_dropped);
+
+	DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_CORE_BACKLOGFAIL);
 	kfree_skb(skb);
 	return NET_RX_DROP;
 }
@@ -4034,6 +4042,9 @@ static int netif_rx_internal(struct sk_buff *skb)
 
 	trace_netif_rx(skb);
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	skb->dropmask = PACKET_IN;
+#endif
 	if (static_key_false(&generic_xdp_needed)) {
 		int ret;
 
@@ -4481,6 +4492,8 @@ drop:
 			atomic_long_inc(&skb->dev->rx_dropped);
 		else
 			atomic_long_inc(&skb->dev->rx_nohandler);
+
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_CORE_BACKLOGFAIL1);
 		kfree_skb(skb);
 		/* Jamal, now you will not able to escape explaining
 		 * me how you were going to use this. :-)
@@ -4495,6 +4508,11 @@ out:
 static int __netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
+
+#ifdef CONFIG_LINK_FORWARD
+	if (CHECK_LINK_FORWARD(*((u32 *)&skb->cb)))
+		return dev_linkforward_queue_xmit(skb);
+#endif
 
 	if (sk_memalloc_socks() && skb_pfmemalloc(skb)) {
 		unsigned int noreclaim_flag;
@@ -4556,6 +4574,9 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 
 	net_timestamp_check(netdev_tstamp_prequeue, skb);
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	skb->dropmask = PACKET_IN;
+#endif
 	if (skb_defer_rx_timestamp(skb))
 		return NET_RX_SUCCESS;
 
@@ -5067,7 +5088,6 @@ static struct sk_buff *napi_frags_skb(struct napi_struct *napi)
 	skb_reset_mac_header(skb);
 	skb_gro_reset_offset(skb);
 
-	eth = skb_gro_header_fast(skb, 0);
 	if (unlikely(skb_gro_header_hard(skb, hlen))) {
 		eth = skb_gro_header_slow(skb, hlen, 0);
 		if (unlikely(!eth)) {
@@ -5077,6 +5097,7 @@ static struct sk_buff *napi_frags_skb(struct napi_struct *napi)
 			return NULL;
 		}
 	} else {
+		eth = (const struct ethhdr *)skb->data;
 		gro_pull_from_frag0(skb, hlen);
 		NAPI_GRO_CB(skb)->frag0 += hlen;
 		NAPI_GRO_CB(skb)->frag0_len -= hlen;
@@ -5198,7 +5219,11 @@ static int process_backlog(struct napi_struct *napi, int quota)
 			rcu_read_unlock();
 			input_queue_head_incr(sd);
 			if (++work >= quota)
+#ifdef CONFIG_MODEM_IF_NET_GRO
+				goto state_changed;
+#else
 				return work;
+#endif
 
 		}
 
@@ -5222,6 +5247,12 @@ static int process_backlog(struct napi_struct *napi, int quota)
 		rps_unlock(sd);
 		local_irq_enable();
 	}
+
+#ifdef CONFIG_MODEM_IF_NET_GRO
+state_changed:
+	napi_gro_flush(napi, false);
+	sd->current_napi = NULL;
+#endif
 
 	return work;
 }
@@ -5308,11 +5339,14 @@ bool napi_complete_done(struct napi_struct *n, int work_done)
 		if (work_done)
 			timeout = n->dev->gro_flush_timeout;
 
+		/* When the NAPI instance uses a timeout and keeps postponing
+		 * it, we need to bound somehow the time packets are kept in
+		 * the GRO layer
+		 */
+		napi_gro_flush(n, !!timeout);
 		if (timeout)
 			hrtimer_start(&n->timer, ns_to_ktime(timeout),
 				      HRTIMER_MODE_REL_PINNED);
-		else
-			napi_gro_flush(n, false);
 	}
 	if (unlikely(!list_empty(&n->poll_list))) {
 		/* If n->poll_list is not empty, we need to mask irqs */
@@ -5592,6 +5626,11 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	 */
 	work = 0;
 	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
+#ifdef CONFIG_MODEM_IF_NET_GRO
+		struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+		sd->current_napi = n;
+#endif
 		work = n->poll(n, weight);
 		trace_napi_poll(n, work, weight);
 	}
@@ -5634,6 +5673,20 @@ out_unlock:
 
 	return work;
 }
+
+#if defined(CONFIG_SEC_SIPC_MODEM_IF) || defined(CONFIG_SEC_SIPC_DUAL_MODEM_IF)
+struct napi_struct *napi_get_current(void)
+{
+#ifdef CONFIG_MODEM_IF_NET_GRO
+	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+	return sd->current_napi;
+#else
+	return NULL;
+#endif
+}
+EXPORT_SYMBOL(napi_get_current);
+#endif
 
 static __latent_entropy void net_rx_action(struct softirq_action *h)
 {
@@ -6766,7 +6819,11 @@ int __dev_change_flags(struct net_device *dev, unsigned int flags)
 
 	dev->flags = (flags & (IFF_DEBUG | IFF_NOTRAILERS | IFF_NOARP |
 			       IFF_DYNAMIC | IFF_MULTICAST | IFF_PORTSEL |
-			       IFF_AUTOMEDIA)) |
+			       IFF_AUTOMEDIA
+#ifdef CONFIG_MPTCP
+					 | IFF_NOMULTIPATH | IFF_MPBACKUP
+#endif
+)) |
 		     (dev->flags & (IFF_UP | IFF_VOLATILE | IFF_PROMISC |
 				    IFF_ALLMULTI));
 
@@ -7849,7 +7906,7 @@ static void netdev_wait_allrefs(struct net_device *dev)
 
 		refcnt = netdev_refcnt_read(dev);
 
-		if (time_after(jiffies, warning_time + 10 * HZ)) {
+		if (refcnt && time_after(jiffies, warning_time + 10 * HZ)) {
 			pr_emerg("unregister_netdevice: waiting for %s to become free. Usage count = %d\n",
 				 dev->name, refcnt);
 			warning_time = jiffies;
@@ -8649,6 +8706,8 @@ static void __net_exit default_device_exit(struct net *net)
 
 		/* Push remaining network devices to init_net */
 		snprintf(fb_name, IFNAMSIZ, "dev%d", dev->ifindex);
+		if (__dev_get_by_name(&init_net, fb_name))
+			snprintf(fb_name, IFNAMSIZ, "dev%%d");
 		err = dev_change_net_namespace(dev, &init_net, fb_name);
 		if (err) {
 			pr_emerg("%s: failed to move %s to init_net: %d\n",
@@ -8802,6 +8861,10 @@ static int __init net_dev_init(void)
 
 	open_softirq(NET_TX_SOFTIRQ, net_tx_action);
 	open_softirq(NET_RX_SOFTIRQ, net_rx_action);
+
+#ifdef CONFIG_LINK_FORWARD
+	linkforward_init();
+#endif
 
 	rc = cpuhp_setup_state_nocalls(CPUHP_NET_DEV_DEAD, "net/dev:dead",
 				       NULL, dev_cpu_dead);

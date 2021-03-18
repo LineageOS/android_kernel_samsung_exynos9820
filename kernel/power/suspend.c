@@ -32,6 +32,7 @@
 #include <linux/compiler.h>
 #include <linux/moduleparam.h>
 #include <linux/wakeup_reason.h>
+#include <linux/sec_debug.h>
 
 #include "power.h"
 
@@ -78,6 +79,8 @@ static void s2idle_begin(void)
 static void s2idle_enter(void)
 {
 	trace_suspend_resume(TPS("machine_suspend"), PM_SUSPEND_TO_IDLE, true);
+	dbg_snapshot_suspend("machine_suspend", s2idle_enter, NULL,
+				PM_SUSPEND_TO_IDLE, DSS_FLAG_IN);
 
 	raw_spin_lock_irq(&s2idle_lock);
 	if (pm_wakeup_pending())
@@ -104,6 +107,8 @@ static void s2idle_enter(void)
 	s2idle_state = S2IDLE_STATE_NONE;
 	raw_spin_unlock_irq(&s2idle_lock);
 
+	dbg_snapshot_suspend("machine_suspend", s2idle_enter, NULL,
+				PM_SUSPEND_TO_IDLE, DSS_FLAG_OUT);
 	trace_suspend_resume(TPS("machine_suspend"), PM_SUSPEND_TO_IDLE, false);
 }
 
@@ -351,18 +356,60 @@ static int suspend_prepare(suspend_state_t state)
 
 	error = __pm_notifier_call_chain(PM_SUSPEND_PREPARE, -1, &nr_calls);
 	if (error) {
+#ifdef CONFIG_SEC_PM_DEBUG
+		void *callback;
+
+		callback = pm_notifier_call_chain_get_callback(nr_calls - 1);
+
+		if (IS_ERR(callback)) {
+			pr_info("PM_SUSPEND_PREPARE failed: %d\n",
+					nr_calls);
+			log_suspend_abort_reason("PM_SUSPEND_PREPARE failed: "
+					"%d", nr_calls);
+		} else {
+			pr_info("PM_SUSPEND_PREPARE failed: %d (%ps)\n",
+					nr_calls, callback);
+			log_suspend_abort_reason("PM_SUSPEND_PREPARE failed: "
+					"%ps (%d)", callback, nr_calls);
+		}
+#endif /* CONFIG_SEC_PM_DEBUG */
 		nr_calls--;
 		goto Finish;
 	}
 
+#ifndef CONFIG_SUSPEND_SKIP_SYNC
+	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
+	dbg_snapshot_suspend("sync_filesystems", sys_sync, NULL, state, DSS_FLAG_IN);
+	pr_info("PM: Syncing filesystems ... ");
+	if (intr_sync(NULL)) {
+		printk("canceled.\n");
+		trace_suspend_resume(TPS("sync_filesystems"), 0, false);
+		error = -EBUSY;
+#ifdef CONFIG_SEC_PM_DEBUG
+		log_suspend_abort_reason("intr_sync failed");
+#endif /* CONFIG_SEC_PM_DEBUG */
+		goto Finish;
+	}
+	pr_cont("done.\n");
+	dbg_snapshot_suspend("sync_filesystems", sys_sync, NULL, state, DSS_FLAG_OUT);
+	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
+#endif
+
 	trace_suspend_resume(TPS("freeze_processes"), 0, true);
+	dbg_snapshot_suspend("freeze_processes", suspend_freeze_processes,
+				NULL, 0, DSS_FLAG_IN);
 	error = suspend_freeze_processes();
+	dbg_snapshot_suspend("freeze_processes", suspend_freeze_processes,
+				NULL, 0, DSS_FLAG_OUT);
 	trace_suspend_resume(TPS("freeze_processes"), 0, false);
 	if (!error)
 		return 0;
 
 	suspend_stats.failed_freeze++;
 	dpm_save_failed_step(SUSPEND_FREEZE);
+#ifdef CONFIG_SEC_PM_DEBUG
+	log_suspend_abort_reason("Freezing processes failed: %d", error);
+#endif /* CONFIG_SEC_PM_DEBUG */
  Finish:
 	__pm_notifier_call_chain(PM_POST_SUSPEND, nr_calls, NULL);
 	pm_restore_console();
@@ -446,7 +493,11 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		if (!(suspend_test(TEST_CORE) || *wakeup)) {
 			trace_suspend_resume(TPS("machine_suspend"),
 				state, true);
+			dbg_snapshot_suspend("machine_suspend", suspend_ops->enter,
+						NULL, state, DSS_FLAG_IN);
 			error = suspend_ops->enter(state);
+			dbg_snapshot_suspend("machine_suspend", suspend_ops->enter,
+						NULL, state, DSS_FLAG_OUT);
 			trace_suspend_resume(TPS("machine_suspend"),
 				state, false);
 		} else if (*wakeup) {
@@ -518,9 +569,12 @@ int suspend_devices_and_enter(suspend_state_t state)
 	dpm_resume_end(PMSG_RESUME);
 	suspend_test_finish("resume devices");
 	trace_suspend_resume(TPS("resume_console"), state, true);
+	dbg_snapshot_suspend("resume_console", resume_console,
+				NULL, state, DSS_FLAG_IN);
 	resume_console();
+	dbg_snapshot_suspend("resume_console", resume_console,
+				NULL, state, DSS_FLAG_OUT);
 	trace_suspend_resume(TPS("resume_console"), state, false);
-
  Close:
 	platform_resume_end(state);
 	pm_suspend_target_state = PM_SUSPEND_ON;
@@ -557,6 +611,7 @@ static int enter_state(suspend_state_t state)
 	int error;
 
 	trace_suspend_resume(TPS("suspend_enter"), state, true);
+	dbg_snapshot_suspend("suspend_enter", enter_state, NULL, state, DSS_FLAG_IN);
 	if (state == PM_SUSPEND_TO_IDLE) {
 #ifdef CONFIG_PM_DEBUG
 		if (pm_test_level != TEST_NONE && pm_test_level <= TEST_CPUS) {
@@ -573,14 +628,6 @@ static int enter_state(suspend_state_t state)
 	if (state == PM_SUSPEND_TO_IDLE)
 		s2idle_begin();
 
-#ifndef CONFIG_SUSPEND_SKIP_SYNC
-	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
-	pr_info("Syncing filesystems ... ");
-	sys_sync();
-	pr_cont("done.\n");
-	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
-#endif
-
 	pm_pr_dbg("Preparing system for sleep (%s)\n", mem_sleep_labels[state]);
 	pm_suspend_clear_flags();
 	error = suspend_prepare(state);
@@ -590,6 +637,7 @@ static int enter_state(suspend_state_t state)
 	if (suspend_test(TEST_FREEZER))
 		goto Finish;
 
+	dbg_snapshot_suspend("suspend_enter", enter_state, NULL, state, DSS_FLAG_OUT);
 	trace_suspend_resume(TPS("suspend_enter"), state, false);
 	pm_pr_dbg("Suspending system (%s)\n", mem_sleep_labels[state]);
 	pm_restrict_gfp_mask();
@@ -620,7 +668,11 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+
+	sec_debug_set_task_in_pm_suspend((uint64_t)current);
 	error = enter_state(state);
+	sec_debug_set_task_in_pm_suspend(0);
+
 	if (error) {
 		suspend_stats.fail++;
 		dpm_save_failed_errno(error);

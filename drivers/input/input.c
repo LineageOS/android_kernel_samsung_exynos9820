@@ -607,11 +607,14 @@ int input_open_device(struct input_handle *handle)
 
 	handle->open++;
 
-	if (!dev->users++ && dev->open)
+	dev->users_private++;
+	if (!dev->disabled && !dev->users++ && dev->open)
 		retval = dev->open(dev);
 
 	if (retval) {
-		dev->users--;
+		dev->users_private--;
+		if (!dev->disabled)
+			dev->users--;
 		if (!--handle->open) {
 			/*
 			 * Make sure we are not delivering any more events
@@ -659,7 +662,8 @@ void input_close_device(struct input_handle *handle)
 
 	__input_release_device(handle);
 
-	if (!--dev->users && dev->close)
+	--dev->users_private;
+	if (!dev->disabled && !--dev->users && dev->close)
 		dev->close(dev);
 
 	if (!--handle->open) {
@@ -674,6 +678,50 @@ void input_close_device(struct input_handle *handle)
 	mutex_unlock(&dev->mutex);
 }
 EXPORT_SYMBOL(input_close_device);
+
+static int input_enable_device(struct input_dev *dev)
+{
+	int retval;
+
+	retval = mutex_lock_interruptible(&dev->mutex);
+	if (retval)
+		return retval;
+
+	if (!dev->disabled)
+		goto out;
+
+	if (dev->users_private && dev->open) {
+		retval = dev->open(dev);
+		if (retval)
+			goto out;
+	}
+	dev->users = dev->users_private;
+	dev->disabled = false;
+
+out:
+	mutex_unlock(&dev->mutex);
+
+	return retval;
+}
+
+static int input_disable_device(struct input_dev *dev)
+{
+	int retval;
+
+	retval = mutex_lock_interruptible(&dev->mutex);
+	if (retval)
+		return retval;
+
+	if (!dev->disabled) {
+		dev->disabled = true;
+		if (dev->users && dev->close)
+			dev->close(dev);
+		dev->users = 0;
+	}
+
+	mutex_unlock(&dev->mutex);
+	return 0;
+}
 
 /*
  * Simulate keyup events for all keys that are marked as pressed.
@@ -858,16 +906,18 @@ static int input_default_setkeycode(struct input_dev *dev,
 		}
 	}
 
-	__clear_bit(*old_keycode, dev->keybit);
-	__set_bit(ke->keycode, dev->keybit);
-
-	for (i = 0; i < dev->keycodemax; i++) {
-		if (input_fetch_keycode(dev, i) == *old_keycode) {
-			__set_bit(*old_keycode, dev->keybit);
-			break; /* Setting the bit twice is useless, so break */
+	if (*old_keycode <= KEY_MAX) {
+		__clear_bit(*old_keycode, dev->keybit);
+		for (i = 0; i < dev->keycodemax; i++) {
+			if (input_fetch_keycode(dev, i) == *old_keycode) {
+				__set_bit(*old_keycode, dev->keybit);
+				/* Setting the bit twice is useless, so break */
+				break;
+			}
 		}
 	}
 
+	__set_bit(ke->keycode, dev->keybit);
 	return 0;
 }
 
@@ -923,9 +973,13 @@ int input_set_keycode(struct input_dev *dev,
 	 * Simulate keyup event if keycode is not present
 	 * in the keymap anymore
 	 */
-	if (test_bit(EV_KEY, dev->evbit) &&
-	    !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
-	    __test_and_clear_bit(old_keycode, dev->key)) {
+	if (old_keycode > KEY_MAX) {
+		dev_warn(dev->dev.parent ?: &dev->dev,
+			 "%s: got too big old keycode %#x\n",
+			 __func__, old_keycode);
+	} else if (test_bit(EV_KEY, dev->evbit) &&
+		   !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
+		   __test_and_clear_bit(old_keycode, dev->key)) {
 		struct input_value vals[] =  {
 			{ EV_KEY, old_keycode, 0 },
 			input_value_sync
@@ -1391,16 +1445,50 @@ static ssize_t input_dev_show_properties(struct device *dev,
 }
 static DEVICE_ATTR(properties, S_IRUGO, input_dev_show_properties, NULL);
 
+static ssize_t input_dev_show_enabled(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct input_dev *input_dev = to_input_dev(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", !input_dev->disabled);
+}
+
+static ssize_t input_dev_store_enabled(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	int ret;
+	bool enable;
+	struct input_dev *input_dev = to_input_dev(dev);
+
+	ret = strtobool(buf, &enable);
+	if (ret)
+		return ret;
+
+	if (enable)
+		ret = input_enable_device(input_dev);
+	else
+		ret = input_disable_device(input_dev);
+	if (ret)
+		return ret;
+
+	return size;
+}
+
+static DEVICE_ATTR(enabled, S_IRUGO | S_IWUSR,
+		   input_dev_show_enabled, input_dev_store_enabled);
 static struct attribute *input_dev_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_phys.attr,
 	&dev_attr_uniq.attr,
 	&dev_attr_modalias.attr,
 	&dev_attr_properties.attr,
+	&dev_attr_enabled.attr,
 	NULL
 };
 
-static const struct attribute_group input_dev_attr_group = {
+static struct attribute_group input_dev_attr_group = {
 	.attrs	= input_dev_attrs,
 };
 
@@ -1427,7 +1515,7 @@ static struct attribute *input_dev_id_attrs[] = {
 	NULL
 };
 
-static const struct attribute_group input_dev_id_attr_group = {
+static struct attribute_group input_dev_id_attr_group = {
 	.name	= "id",
 	.attrs	= input_dev_id_attrs,
 };
@@ -1497,7 +1585,7 @@ static struct attribute *input_dev_caps_attrs[] = {
 	NULL
 };
 
-static const struct attribute_group input_dev_caps_attr_group = {
+static struct attribute_group input_dev_caps_attr_group = {
 	.name	= "capabilities",
 	.attrs	= input_dev_caps_attrs,
 };
@@ -1687,7 +1775,7 @@ static int input_dev_suspend(struct device *dev)
 	 * Keys that are pressed now are unlikely to be
 	 * still pressed when we resume.
 	 */
-	input_dev_release_keys(input_dev);
+	/* input_dev_release_keys(input_dev); */
 
 	/* Turn off LEDs and sounds, if any are active. */
 	input_dev_toggle(input_dev, false);
@@ -1751,7 +1839,7 @@ static const struct dev_pm_ops input_dev_pm_ops = {
 };
 #endif /* CONFIG_PM */
 
-static const struct device_type input_dev_type = {
+static struct device_type input_dev_type = {
 	.groups		= input_dev_attr_groups,
 	.release	= input_dev_release,
 	.uevent		= input_dev_uevent,

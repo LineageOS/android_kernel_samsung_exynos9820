@@ -30,8 +30,16 @@
 #include <linux/list_lru.h>
 #include "binder_alloc.h"
 #include "binder_trace.h"
+#ifdef CONFIG_SAMSUNG_FREECESS
+#include <linux/freecess.h>
+#endif
+
+#define MAX_ALLOCATION_SIZE (1024 * 1024)
+#define MAX_ASYNC_ALLOCATION_SIZE (512 * 1024)
 
 struct list_lru binder_alloc_lru;
+
+extern int system_server_pid;
 
 static DEFINE_MUTEX(binder_alloc_mmap_lock);
 
@@ -218,6 +226,11 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 
 	if (mm) {
 		down_read(&mm->mmap_sem);
+		if (!mmget_still_valid(mm)) {
+			if (allocate == 0)
+				goto free_range;
+			goto err_no_vma;
+		}
 		vma = alloc->vma;
 	}
 
@@ -368,7 +381,9 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	void *end_page_addr;
 	size_t size, data_offsets_size;
 	int ret;
-
+#ifdef CONFIG_SAMSUNG_FREECESS
+	struct task_struct *p = NULL;
+#endif
 	if (!binder_alloc_get_vma(alloc)) {
 		pr_err("%d: binder_alloc_buf, no vma\n",
 		       alloc->pid);
@@ -391,11 +406,39 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 				alloc->pid, extra_buffers_size);
 		return ERR_PTR(-EINVAL);
 	}
+#ifdef CONFIG_SAMSUNG_FREECESS
+	if (is_async && (alloc->free_async_space < 3*(size + sizeof(struct binder_buffer))
+		|| (alloc->free_async_space < ((alloc->buffer_size/2)*9/10)))) {
+		rcu_read_lock();
+		p = find_task_by_vpid(alloc->pid);
+		rcu_read_unlock();
+		if (p != NULL && thread_group_is_frozen(p)) {
+			binder_report(p, -1, "free_buffer_full", is_async);
+		}
+	}
+#endif
 	if (is_async &&
 	    alloc->free_async_space < size + sizeof(struct binder_buffer)) {
-		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
-			     "%d: binder_alloc_buf size %zd failed, no async space left\n",
-			      alloc->pid, size);
+		//binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
+		//         "%d: binder_alloc_buf size %zd failed, no async space left\n",
+		//         alloc->pid, size);
+		pr_info("%d: binder_alloc_buf size %zd(%zd) failed, no async space left\n",
+		         alloc->pid, size, alloc->free_async_space);
+		return ERR_PTR(-ENOSPC);
+	}
+
+	// If allocation size is more than 1M, throw it away and return ENOSPC err
+	if (MAX_ALLOCATION_SIZE <= size + sizeof(struct binder_buffer)) { //1M
+		pr_info("%d: binder_alloc_buf size %zd failed, too large size\n",
+		         alloc->pid, size);
+		return ERR_PTR(-ENOSPC);
+	}
+
+	// If allocation size for async is more than 512K, throw it away and return ENOPC
+	if (is_async &&
+	    MAX_ASYNC_ALLOCATION_SIZE <= size + sizeof(struct binder_buffer)) { //512K
+		pr_info("%d: binder_alloc_buf size %zd(%zd) failed, too large async size\n",
+		         alloc->pid, size, alloc->free_async_space);
 		return ERR_PTR(-ENOSPC);
 	}
 
@@ -499,6 +542,14 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	buffer->extra_buffers_size = extra_buffers_size;
 	if (is_async) {
 		alloc->free_async_space -= size + sizeof(struct binder_buffer);
+		if ((system_server_pid == alloc->pid) && (alloc->free_async_space <= 153600)) { // 150K
+			pr_info("%d: [free_size<150K] binder_alloc_buf size %zd async free %zd\n",
+                                 alloc->pid, size, alloc->free_async_space);
+                }
+		if ((system_server_pid == alloc->pid) && (size >= 122880)) { // 120K
+			pr_info("%d: [alloc_size>120K] binder_alloc_buf size %zd async free %zd\n",
+				alloc->pid, size, alloc->free_async_space);
+		}
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC_ASYNC,
 			     "%d: binder_alloc_buf size %zd async free %zd\n",
 			      alloc->pid, size, alloc->free_async_space);
@@ -948,14 +999,13 @@ enum lru_status binder_alloc_free_page(struct list_head *item,
 
 	index = page - alloc->pages;
 	page_addr = (uintptr_t)alloc->buffer + index * PAGE_SIZE;
+	
+	mm = alloc->vma_vm_mm;
+	if (!mmget_not_zero(mm))
+		goto err_mmget;
+	if (!down_write_trylock(&mm->mmap_sem))
+		goto err_down_write_mmap_sem_failed;
 	vma = binder_alloc_get_vma(alloc);
-	if (vma) {
-		if (!mmget_not_zero(alloc->vma_vm_mm))
-			goto err_mmget;
-		mm = alloc->vma_vm_mm;
-		if (!down_write_trylock(&mm->mmap_sem))
-			goto err_down_write_mmap_sem_failed;
-	}
 
 	list_lru_isolate(lru, item);
 	spin_unlock(lock);
@@ -968,10 +1018,9 @@ enum lru_status binder_alloc_free_page(struct list_head *item,
 			       PAGE_SIZE);
 
 		trace_binder_unmap_user_end(alloc, index);
-
-		up_write(&mm->mmap_sem);
-		mmput(mm);
 	}
+	up_write(&mm->mmap_sem);
+	mmput(mm);
 
 	trace_binder_unmap_kernel_start(alloc, index);
 

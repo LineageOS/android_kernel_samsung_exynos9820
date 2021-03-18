@@ -66,9 +66,17 @@ obj-y				+= gpu/
 
 obj-$(CONFIG_CONNECTOR)		+= connector/
 
+# mcps module.
+obj-$(CONFIG_MCPS)		+= mcps/
+
 # i810fb and intelfb depend on char/agp/
 obj-$(CONFIG_FB_I810)           += video/fbdev/i810/
 obj-$(CONFIG_FB_INTEL)          += video/fbdev/intelfb/
+
+obj-$(CONFIG_DEV_RIL_BRIDGE)	+= misc/dev_ril_bridge/
+obj-$(CONFIG_USE_MUIC)		+= muic/
+
+obj-$(CONFIG_IFCONN_MANAGER)    += ifconn/
 
 obj-$(CONFIG_PARPORT)		+= parport/
 obj-$(CONFIG_NVM)		+= lightnvm/
@@ -162,6 +170,7 @@ obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
 obj-$(CONFIG_HYPERV)		+= hv/
 
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
+obj-$(CONFIG_BATTERY_SAMSUNG)   += battery_v2/
 obj-$(CONFIG_EXTCON)		+= extcon/
 obj-$(CONFIG_MEMORY)		+= memory/
 obj-$(CONFIG_IIO)		+= iio/
@@ -183,3 +192,54 @@ obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
+
+# CCIC
+obj-y	+= ccic/
+
+# COMBO REDRIVER
+obj-$(CONFIG_COMBO_REDRIVER_PTN36502)	+= redriver/
+
+obj-$(CONFIG_EXYNOS_BTS)	+= bts/
+
+# Mobicore driver
+obj-$(CONFIG_TRUSTONIC_TEE)     += gud/
+
+# FIVE TEE driver
+obj-$(CONFIG_FIVE_TEE_DRIVER)	+= security/samsung/five_tee_driver/
+obj-$(CONFIG_ICD)		+= security/samsung/icdrv/
+
+# vision driver
+obj-$(CONFIG_VISION_SUPPORT)	+= vision/
+
+#Fingerprint
+obj-$(CONFIG_SENSORS_FINGERPRINT)       += fingerprint/
+
+# Sensorhub driver
+obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
+
+# optics sensor driver
+obj-$(CONFIG_SENSORS_HRMSENSOR)	+= optics/
+obj-$(CONFIG_SENSORS_MAX86915)	+= optics/
+obj-$(CONFIG_SENSORS_TCS3407)	+= optics/
+obj-$(CONFIG_SENSORS_VD6281)	+= optics/
+
+# Motor
+obj-y                           += motor/
+
+# uH
+obj-$(CONFIG_UH)		+= uh/
+
+# streamline
+#ifeq ($(CONFIG_GATOR), y)
+#	obj-$(CONFIG_GATOR)				+= gator/
+#endif
+
+obj-y				+= kperfmon/
+
+obj-$(CONFIG_SEC_EXT)		+= samsung/
+
+#TZIC
+obj-y  += security/samsung/tzic/
+
+# SPU signature verify
+obj-$(CONFIG_SPU_VERIFY) += spu_verify/

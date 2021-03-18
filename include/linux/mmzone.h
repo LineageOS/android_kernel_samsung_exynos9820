@@ -148,6 +148,7 @@ enum zone_stat_item {
 	NR_ZSPAGES,		/* allocated in zsmalloc */
 #endif
 	NR_FREE_CMA_PAGES,
+	NR_FREE_RBIN_PAGES,
 	NR_VM_ZONE_STAT_ITEMS };
 
 enum node_stat_item {
@@ -180,7 +181,10 @@ enum node_stat_item {
 	NR_VMSCAN_IMMEDIATE,	/* Prioritise for reclaim when writeback ends */
 	NR_DIRTIED,		/* page dirtyings since bootup */
 	NR_WRITTEN,		/* page writings since bootup */
-	NR_INDIRECTLY_RECLAIMABLE_BYTES, /* measured in bytes */
+#ifdef CONFIG_KZEROD
+	ZERO_PAGE_ALLOC_TOTAL,
+	ZERO_PAGE_ALLOC_PREZERO,
+#endif
 	NR_VM_NODE_STAT_ITEMS
 };
 

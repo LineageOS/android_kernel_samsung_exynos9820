@@ -872,6 +872,14 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
 			   usb_dev->descriptor.bDeviceProtocol))
 		return -ENOMEM;
 
+	pr_info("usb_host : %s: PRODUCT=%x/%x/%x TYPE=%d/%d/%d\n", __func__,
+			   le16_to_cpu(usb_dev->descriptor.idVendor),
+			   le16_to_cpu(usb_dev->descriptor.idProduct),
+			   le16_to_cpu(usb_dev->descriptor.bcdDevice),
+			   usb_dev->descriptor.bDeviceClass,
+			   usb_dev->descriptor.bDeviceSubClass,
+			   usb_dev->descriptor.bDeviceProtocol);
+
 	return 0;
 }
 
@@ -1405,6 +1413,7 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 
 	if (udev->state == USB_STATE_NOTATTACHED) {
 		status = -ENODEV;
+		dev_err(&udev->dev, "%s: status %d\n", __func__, status);
 		goto done;
 	}
 	udev->can_submit = 1;
@@ -1421,10 +1430,13 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 					udev->reset_resume);
 		}
 	}
-	usb_mark_last_busy(udev);
+	if (!udev)
+		goto done;
 
- done:
+	usb_mark_last_busy(udev);
 	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
+
+done:
 	if (!status)
 		udev->reset_resume = 0;
 	return status;

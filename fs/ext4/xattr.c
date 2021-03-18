@@ -56,6 +56,7 @@
 #include <linux/slab.h>
 #include <linux/mbcache.h>
 #include <linux/quotaops.h>
+#include <linux/fslog.h>
 #include "ext4_jbd2.h"
 #include "ext4.h"
 #include "xattr.h"
@@ -243,10 +244,12 @@ __ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh,
 	error = ext4_xattr_check_entries(BFIRST(bh), bh->b_data + bh->b_size,
 					 bh->b_data);
 errout:
-	if (error)
+	if (error) {
+		print_bh(inode->i_sb, bh, 0, EXT4_BLOCK_SIZE(inode->i_sb));
 		__ext4_error_inode(inode, function, line, 0,
 				   "corrupted xattr block %llu",
 				   (unsigned long long) bh->b_blocknr);
+	}
 	else
 		set_buffer_verified(bh);
 	return error;
@@ -267,9 +270,6 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
 		goto errout;
 	error = ext4_xattr_check_entries(IFIRST(header), end, IFIRST(header));
 errout:
-	if (error)
-		__ext4_error_inode(inode, function, line, 0,
-				   "corrupted in-inode xattr");
 	return error;
 }
 
@@ -588,8 +588,12 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
 	header = IHDR(inode, raw_inode);
 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
 	error = xattr_check_inode(inode, header, end);
-	if (error)
+	if (error) {
+		__ext4_error_inode(inode, __func__, __LINE__, 0,
+				   "corrupted in-inode xattr");
+		print_iloc_info(inode->i_sb, iloc);
 		goto cleanup;
+	}
 	entry = IFIRST(header);
 	error = xattr_find_entry(inode, &entry, end, name_index, name, 0);
 	if (error)
@@ -733,8 +737,12 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	header = IHDR(inode, raw_inode);
 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
 	error = xattr_check_inode(inode, header, end);
-	if (error)
+	if (error) {
+		print_iloc_info(inode->i_sb, iloc);
+		__ext4_error_inode(inode, __func__, __LINE__, 0,
+				   "corrupted in-inode xattr");
 		goto cleanup;
+	}
 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
 					buffer, buffer_size);
 
@@ -815,8 +823,12 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
 		header = IHDR(inode, raw_inode);
 		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
 		ret = xattr_check_inode(inode, header, end);
-		if (ret)
+		if (ret) {
+			print_iloc_info(inode->i_sb, iloc);
+			__ext4_error_inode(inode, __func__, __LINE__, 0,
+					   "corrupted in-inode xattr");
 			goto out;
+		}
 
 		for (entry = IFIRST(header); !IS_LAST_ENTRY(entry);
 		     entry = EXT4_XATTR_NEXT(entry))
@@ -828,6 +840,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
 		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);
 		if (IS_ERR(bh)) {
 			ret = PTR_ERR(bh);
+			bh = NULL;
 			goto out;
 		}
 
@@ -1859,6 +1872,15 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
 	size_t old_ea_inode_quota = 0;
 	unsigned int ea_ino;
 
+	if (!strcmp(i->name, "selinux")) {
+		if (!i->value || !strcmp(i->value, "") ||
+				strstr(i->value, "unlabeled")) {
+			SE_LOG("%s : ino(%lu) label set, value : %s.",
+					__func__, inode->i_ino, i->value?i->value:"NuLL");
+			dump_stack();
+			fslog_kmsg_selog(__func__, 12);
+		}			
+	}
 
 #define header(x) ((struct ext4_xattr_header *)(x))
 
@@ -2188,8 +2210,12 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
 		error = xattr_check_inode(inode, header, is->s.end);
-		if (error)
+		if (error) {
+			print_iloc_info(inode->i_sb, is->iloc);
+			__ext4_error_inode(inode, __func__, __LINE__, 0,
+					   "corrupted in-inode xattr");
 			return error;
+		}
 		/* Find the named attribute. */
 		error = xattr_find_entry(inode, &is->s.here, is->s.end,
 					 i->name_index, i->name, 0);
@@ -2208,7 +2234,9 @@ int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
 	struct ext4_xattr_search *s = &is->s;
 	int error;
 
-	if (EXT4_I(inode)->i_extra_isize == 0)
+	/* @fs.sec -- ec294112f1af9d4be72e6292e7e994e522fccbeb -- */
+	if (EXT4_I(inode)->i_extra_isize == 0 ||
+			(void *) EXT4_XATTR_NEXT(s->first) >= s->end)
 		return -ENOSPC;
 	error = ext4_xattr_set_entry(i, s, handle, inode, false /* is_block */);
 	if (error)
@@ -2232,8 +2260,19 @@ static int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
 	struct ext4_xattr_search *s = &is->s;
 	int error;
 
-	if (EXT4_I(inode)->i_extra_isize == 0)
+	/* @fs.sec -- 27aa4ade7b90e77a75b0f821924eaac228cfdd43 -- */
+	if (EXT4_I(inode)->i_extra_isize == 0 ||
+			(void *) EXT4_XATTR_NEXT(s->first) >= s->end)
 		return -ENOSPC;
+
+	if (!strcmp(i->name, "selinux")) {
+		if (!i->value || !strcmp(i->value, "") ||
+				strstr(i->value, "unlabeled")) {
+			SE_LOG("%s : ino(%lu) label set, value : %s.",
+					__func__, inode->i_ino, i->value?i->value:"NuLL");
+		}
+	}
+
 	error = ext4_xattr_set_entry(i, s, handle, inode, false /* is_block */);
 	if (error)
 		return error;
@@ -2405,6 +2444,8 @@ retry_inode:
 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
 			if (!error && !is.s.not_found) {
 				i.value = NULL;
+				SE_LOG(">>> Don't trust next log. %s : ino(%lu)",
+						__func__, inode->i_ino);
 				error = ext4_xattr_ibody_set(handle, inode, &i,
 							     &is);
 			} else if (error == -ENOSPC) {
@@ -2727,8 +2768,14 @@ retry:
 	total_ino = sizeof(struct ext4_xattr_ibody_header) + sizeof(u32);
 
 	error = xattr_check_inode(inode, header, end);
-	if (error)
+	if (error) {
+		printk(KERN_ERR "printing inode..\n");
+		print_block_data(inode->i_sb, 0, (unsigned char *)raw_inode,
+					0, EXT4_INODE_SIZE(inode->i_sb));
+		__ext4_error_inode(inode, __func__, __LINE__, 0,
+				   "corrupted in-inode xattr");
 		goto cleanup;
+	}
 
 	ifree = ext4_xattr_free_space(base, &min_offs, base, &total_ino);
 	if (ifree >= isize_diff)
@@ -2905,6 +2952,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
 			if (error == -EIO)
 				EXT4_ERROR_INODE(inode, "block %llu read error",
 						 EXT4_I(inode)->i_file_acl);
+			bh = NULL;
 			goto cleanup;
 		}
 		error = ext4_xattr_check_block(inode, bh);
@@ -3061,6 +3109,7 @@ ext4_xattr_block_cache_find(struct inode *inode,
 		if (IS_ERR(bh)) {
 			if (PTR_ERR(bh) == -ENOMEM)
 				return NULL;
+			bh = NULL;
 			EXT4_ERROR_INODE(inode, "block %lu read error",
 					 (unsigned long)ce->e_value);
 		} else if (ext4_xattr_cmp(header, BHDR(bh)) == 0) {

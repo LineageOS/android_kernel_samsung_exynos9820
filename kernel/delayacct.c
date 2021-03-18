@@ -155,6 +155,19 @@ __u64 __delayacct_blkio_ticks(struct task_struct *tsk)
 	return ret;
 }
 
+#ifdef CONFIG_PAGE_BOOST
+__u64 __delayacct_blkio_nsecs(struct task_struct *tsk)
+{
+	__u64 ret;
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&tsk->delays->lock, flags);
+	ret = tsk->delays->blkio_delay + tsk->delays->swapin_delay;
+	raw_spin_unlock_irqrestore(&tsk->delays->lock, flags);
+	return ret;
+}
+#endif
+
 void __delayacct_freepages_start(void)
 {
 	current->delays->freepages_start = ktime_get_ns();

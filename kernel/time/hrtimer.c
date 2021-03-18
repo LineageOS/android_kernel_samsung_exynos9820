@@ -52,6 +52,7 @@
 #include <linux/timer.h>
 #include <linux/freezer.h>
 #include <linux/compat.h>
+#include <linux/debug-snapshot.h>
 
 #include <linux/uaccess.h>
 
@@ -1256,7 +1257,9 @@ static void __run_hrtimer(struct hrtimer_cpu_base *cpu_base,
 	 */
 	raw_spin_unlock(&cpu_base->lock);
 	trace_hrtimer_expire_entry(timer, now);
+	dbg_snapshot_hrtimer(timer, now, fn, DSS_FLAG_IN);
 	restart = fn(timer);
+	dbg_snapshot_hrtimer(timer, now, fn, DSS_FLAG_OUT);
 	trace_hrtimer_expire_exit(timer);
 	raw_spin_lock(&cpu_base->lock);
 
@@ -1640,6 +1643,9 @@ int hrtimers_prepare_cpu(unsigned int cpu)
 	cpu_base->active_bases = 0;
 	cpu_base->cpu = cpu;
 	hrtimer_init_hres(cpu_base);
+
+	restore_pcpu_tick(cpu);
+
 	return 0;
 }
 
@@ -1681,6 +1687,7 @@ int hrtimers_dead_cpu(unsigned int scpu)
 	int i;
 
 	BUG_ON(cpu_online(scpu));
+	save_pcpu_tick(scpu);
 	tick_cancel_sched_timer(scpu);
 
 	local_irq_disable();

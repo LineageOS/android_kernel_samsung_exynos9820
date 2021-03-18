@@ -23,14 +23,13 @@ if CRYPTO
 comment "Crypto core or helper"
 
 config CRYPTO_FIPS
-	bool "FIPS 200 compliance"
-	depends on (CRYPTO_ANSI_CPRNG || CRYPTO_DRBG) && !CRYPTO_MANAGER_DISABLE_TESTS
-	depends on (MODULE_SIG || !MODULES)
+	bool "FIPS 140-2 compliance"
+	default y
 	help
-	  This options enables the fips boot option which is
-	  required if you want to system to operate in a FIPS 200
-	  certification.  You should say no unless you know what
-	  this is.
+	  This options enables the fips option which is
+	  required if you want to system to operate in a FIPS 140-2
+	  certification. 
+	  depends on !CRYPTO_MANAGER_DISABLE_TESTS
 
 config CRYPTO_ALGAPI
 	tristate
@@ -161,7 +160,7 @@ config CRYPTO_USER
 
 config CRYPTO_MANAGER_DISABLE_TESTS
 	bool "Disable run-time self tests"
-	default y
+	default n
 	depends on CRYPTO_MANAGER2
 	help
 	  Disable run-time self tests that normally take place at
@@ -239,7 +238,7 @@ config CRYPTO_AUTHENC
 
 config CRYPTO_TEST
 	tristate "Testing module"
-	depends on m
+	default n
 	select CRYPTO_MANAGER
 	help
 	  Quick & dirty crypto test module.
@@ -388,6 +387,16 @@ config CRYPTO_KEYWRAP
 	help
 	  Support for key wrapping (NIST SP800-38F / RFC3394) without
 	  padding.
+
+comment "KDF modes"
+
+config CRYPTO_KBKDF_CTR_HMAC_SHA512
+    tristate "KBKDF CTR HMAC(SHA512) support"
+    select CRYPTO_HMAC
+    select CRYPTO_SHA512
+    help
+      NIST SP 800-108 Key Derivation Function (KDF).
+      Counter mode. HMAC(SHA512) based
 
 comment "Hash modes"
 
@@ -1601,6 +1610,27 @@ config CRYPTO_TWOFISH_AVX_X86_64
 
 	  See also:
 	  <http://www.schneier.com/twofish.html>
+
+config CRYPTO_DISKCIPHER
+	bool "Diskcipher support"
+	default n
+	help
+	 Diskcipher support the crypt operation of the block host device
+	 that has inline crypto engine.
+
+config CRYPTO_DISKCIPHER_DUN
+	bool "Diskcipher use dun"
+	default y
+	depends on CRYPTO_DISKCIPHER && F2FS_FS_ENCRYPTION
+	help
+	 support Diskcipher use dun(device unit number)
+
+config CRYPTO_DISKCIPHER_DEBUG
+	bool "Diskcipher debug support"
+	default n
+	depends on CRYPTO_DISKCIPHER
+	help
+	 support Diskcipher debug
 
 comment "Compression"
 

@@ -577,6 +577,13 @@ inline int bio_phys_segments(struct request_queue *q, struct bio *bio)
 }
 EXPORT_SYMBOL(bio_phys_segments);
 
+#ifdef CONFIG_DDAR
+static inline void bio_clone_crypt_key(struct bio *dst, const struct bio *src)
+{
+	dst->bi_dio_inode = src->bi_dio_inode;
+}
+#endif
+
 /**
  * 	__bio_clone_fast - clone a bio that shares the original bio's biovec
  * 	@bio: destination bio
@@ -605,7 +612,13 @@ void __bio_clone_fast(struct bio *bio, struct bio *bio_src)
 	bio->bi_write_hint = bio_src->bi_write_hint;
 	bio->bi_iter = bio_src->bi_iter;
 	bio->bi_io_vec = bio_src->bi_io_vec;
+#ifdef CONFIG_BLK_DEV_CRYPT
+	bio->bi_cryptd = bio_src->bi_cryptd;
+#endif
 
+#ifdef CONFIG_DDAR
+	bio_clone_crypt_key(bio, bio_src);
+#endif
 	bio_clone_blkcg_association(bio, bio_src);
 }
 EXPORT_SYMBOL(__bio_clone_fast);
@@ -689,6 +702,12 @@ struct bio *bio_clone_bioset(struct bio *bio_src, gfp_t gfp_mask,
 	bio->bi_write_hint	= bio_src->bi_write_hint;
 	bio->bi_iter.bi_sector	= bio_src->bi_iter.bi_sector;
 	bio->bi_iter.bi_size	= bio_src->bi_iter.bi_size;
+#ifdef CONFIG_BLK_DEV_CRYPT
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	bio->bi_iter.bi_dun = bio_src->bi_iter.bi_dun;
+#endif
+	bio->bi_cryptd = bio_src->bi_cryptd;
+#endif
 
 	switch (bio_op(bio)) {
 	case REQ_OP_DISCARD:
@@ -714,6 +733,9 @@ struct bio *bio_clone_bioset(struct bio *bio_src, gfp_t gfp_mask,
 		}
 	}
 
+#ifdef CONFIG_DDAR
+	bio_clone_crypt_key(bio, bio_src);
+#endif
 	bio_clone_blkcg_association(bio, bio_src);
 
 	return bio;

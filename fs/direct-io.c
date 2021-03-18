@@ -38,6 +38,9 @@
 #include <linux/atomic.h>
 #include <linux/prefetch.h>
 
+#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_FS_ENCRYPTION)
+#include <linux/fscrypt.h>
+
 /*
  * How many user pages to map in one call to get_user_pages().  This determines
  * the size of a structure in the slab cache
@@ -448,10 +451,24 @@ static inline void dio_bio_submit(struct dio *dio, struct dio_submit *sdio)
 	dio->refcount++;
 	spin_unlock_irqrestore(&dio->bio_lock, flags);
 
+#if defined(CONFIG_FS_INLINE_ENCRYPTION)
+	if (fscrypt_inline_encrypted(dio->inode)) {
+		fscrypt_set_bio_cryptd_dun(dio->inode, bio,
+				fscrypt_get_dun(dio->inode,
+				(sdio->logical_offset_in_bio >> PAGE_SHIFT)));
+#if defined(CONFIG_CRYPTO_DISKCIPHER_DEBUG)
+		crypto_diskcipher_debug(FS_DIO, bio->bi_opf);
+#endif
+	}
+#endif
+
 	if (dio->is_async && dio->op == REQ_OP_READ && dio->should_dirty)
 		bio_set_pages_dirty(bio);
 
 	dio->bio_disk = bio->bi_disk;
+#ifdef CONFIG_DDAR
+	bio->bi_dio_inode = dio->inode;
+#endif
 
 	if (sdio->submit_io) {
 		sdio->submit_io(bio, dio->inode, sdio->logical_offset_in_bio);
@@ -463,6 +480,20 @@ static inline void dio_bio_submit(struct dio *dio, struct dio_submit *sdio)
 	sdio->boundary = 0;
 	sdio->logical_offset_in_bio = 0;
 }
+
+#ifdef CONFIG_DDAR
+struct inode *dio_bio_get_inode(struct bio *bio)
+{
+	struct inode *inode = NULL;
+
+	if (bio == NULL)
+		return NULL;
+
+	inode = bio->bi_dio_inode;
+
+	return inode;
+}
+#endif
 
 /*
  * Release any resources in case of a failure

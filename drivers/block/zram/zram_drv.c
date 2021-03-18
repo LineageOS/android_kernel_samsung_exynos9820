@@ -35,12 +35,21 @@
 
 #include "zram_drv.h"
 
+/* Total bytes used by the compressed storage */
+static u64 zram_pool_total_size;
+
 static DEFINE_IDR(zram_index_idr);
 /* idr index must be protected */
 static DEFINE_MUTEX(zram_index_mutex);
 
 static int zram_major;
+#if IS_ENABLED(CONFIG_CRYPTO_LZ4)
+static const char *default_compressor = "lz4";
+#elif IS_ENABLED(CONFIG_CRYPTO_ZSTD)
+static const char *default_compressor = "zstd";
+#else
 static const char *default_compressor = "lzo";
+#endif
 
 /* Module params (documentation at end) */
 static unsigned int num_devices = 1;
@@ -900,12 +909,14 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 		kunmap_atomic(dst);
 		zcomp_stream_put(zram->comp);
 	}
+	/* Should NEVER happen. BUG() if it does. */
+	if (unlikely(ret)) {
+		pr_err("Decompression failed! err=%d, page=%u, len=%u, addr=%p\n", ret, index, size, src);
+		print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 16, 1, src, size, 1);
+		BUG();
+	}
 	zs_unmap_object(zram->mem_pool, handle);
 	zram_slot_unlock(zram, index);
-
-	/* Should NEVER happen. Return bio error if it does. */
-	if (unlikely(ret))
-		pr_err("Decompression failed! err=%d, page=%u\n", ret, index);
 
 	return ret;
 }
@@ -1026,6 +1037,7 @@ compress_again:
 	}
 
 	alloced_pages = zs_get_total_pages(zram->mem_pool);
+	zram_pool_total_size = alloced_pages << PAGE_SHIFT;
 	update_used_max(zram, alloced_pages);
 
 	if (zram->limit_pages && alloced_pages > zram->limit_pages) {
@@ -1707,6 +1719,25 @@ static void destroy_devices(void)
 	cpuhp_remove_multi_state(CPUHP_ZCOMP_PREPARE);
 }
 
+static int zram_size_notifier(struct notifier_block *nb,
+			       unsigned long action, void *data)
+{
+	struct seq_file *s;
+
+	s = (struct seq_file *)data;
+	if (s)
+		seq_printf(s, "ZramDevice:    %8lu kB\n",
+			(unsigned long)zram_pool_total_size >> 10);
+	else
+		pr_cont("ZramDevice:%lukB ",
+			(unsigned long)zram_pool_total_size >> 10);
+	return 0;
+}
+
+static struct notifier_block zram_size_nb = {
+	.notifier_call = zram_size_notifier,
+};
+
 static int __init zram_init(void)
 {
 	int ret;
@@ -1740,6 +1771,7 @@ static int __init zram_init(void)
 		num_devices--;
 	}
 
+	show_mem_extra_notifier_register(&zram_size_nb);
 	return 0;
 
 out_error:

@@ -20,6 +20,7 @@
 #include <linux/sched/task.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/task_work.h>
+#include <linux/sec_debug.h>
 
 #include "internals.h"
 
@@ -102,6 +103,8 @@ void synchronize_irq(unsigned int irq)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	if (desc) {
+		sec_debug_set_task_in_sync_irq((uint64_t)current, irq, (desc && desc->action) ? desc->action->name : NULL, desc);
+
 		__synchronize_hardirq(desc);
 		/*
 		 * We made sure that no hardirq handler is
@@ -109,7 +112,9 @@ void synchronize_irq(unsigned int irq)
 		 * active.
 		 */
 		wait_event(desc->wait_for_threads,
-			   !atomic_read(&desc->threads_active));
+				!atomic_read(&desc->threads_active));
+
+		sec_debug_set_task_in_sync_irq(0, 0, 0, 0);
 	}
 }
 EXPORT_SYMBOL(synchronize_irq);
@@ -1385,6 +1390,9 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
 		}
 
+		if (new->flags & IRQF_GIC_MULTI_TARGET)
+			irqd_set(&desc->irq_data, IRQD_GIC_MULTI_TARGET);
+
 		if (irq_settings_can_autoenable(desc)) {
 			irq_startup(desc, IRQ_RESEND, IRQ_START_COND);
 		} else {
@@ -1398,7 +1406,6 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 			/* Undo nested disables: */
 			desc->depth = 1;
 		}
-
 	} else if (new->flags & IRQF_TRIGGER_MASK) {
 		unsigned int nmsk = new->flags & IRQF_TRIGGER_MASK;
 		unsigned int omsk = irqd_get_trigger_type(&desc->irq_data);
@@ -1964,6 +1971,7 @@ static struct irqaction *__free_percpu_irq(unsigned int irq, void __percpu *dev_
 		     irq, cpumask_first(desc->percpu_enabled));
 		goto bad;
 	}
+	printk("%s : desc action of irq %d becomes null\n", __func__, irq);
 
 	/* Found it - now remove it from the list of entries: */
 	desc->action = NULL;
