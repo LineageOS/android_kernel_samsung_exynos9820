@@ -5329,15 +5329,6 @@
 					fsmgr_flags = "wait,verify,avb";
 					status = "okay";
 				};
-
-				product {
-					compatible = "android,product";
-					dev = "/dev/block/platform/13d60000.ufs/by-name/product";
-					type = "ext4";
-					mnt_flags = "ro";
-					fsmgr_flags = "wait,verify,avb";
-					status = "okay";
-				};
 			};
 		};
 	};
