@@ -5318,7 +5318,7 @@
 					type = "ext4";
 					mnt_flags = "ro";
 					fsmgr_flags = "wait, avb";
-					status = "disabled";
+					status = "okay";
 				};
 
 				vendor {
