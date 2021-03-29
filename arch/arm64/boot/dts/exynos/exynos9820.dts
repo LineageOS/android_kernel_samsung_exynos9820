@@ -5308,28 +5308,6 @@
 				compatible = "android,vbmeta";
 				parts = "vbmeta,boot,recovery,system,vendor,product,dtb,dtbo,keystorage";
 			};
-
-			fstab {
-				compatible = "android,fstab";
-
-				system {
-					compatible = "android,system";
-					dev = "/dev/block/platform/13d60000.ufs/by-name/system";
-					type = "ext4";
-					mnt_flags = "ro";
-					fsmgr_flags = "wait, avb";
-					status = "okay";
-				};
-
-				vendor {
-					compatible = "android,vendor";
-					dev = "/dev/block/platform/13d60000.ufs/by-name/vendor";
-					type = "ext4";
-					mnt_flags = "ro";
-					fsmgr_flags = "wait,verify,avb";
-					status = "okay";
-				};
-			};
 		};
 	};
 
