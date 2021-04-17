@@ -894,7 +894,7 @@ static int userfaultfd_release(struct inode *inode, struct file *file)
 		vma->vm_flags = new_flags;
 		vma->vm_userfaultfd_ctx = NULL_VM_UFFD_CTX;
 	}
-skip_mm:	
+skip_mm:
 	up_write(&mm->mmap_sem);
 	mmput(mm);
 wakeup:
