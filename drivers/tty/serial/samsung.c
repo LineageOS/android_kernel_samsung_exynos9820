@@ -2400,6 +2400,13 @@ static int s3c24xx_serial_resume(struct device *dev)
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
 
 	if (port) {
+		clk_prepare_enable(ourport->clk);
+		if (!IS_ERR(ourport->baudclk))
+			clk_prepare_enable(ourport->baudclk);
+		s3c24xx_serial_resetport(port, s3c24xx_port_to_cfg(port));
+		if (!IS_ERR(ourport->baudclk))
+			clk_disable_unprepare(ourport->baudclk);
+		clk_disable_unprepare(ourport->clk);
 
 		uart_resume_port(&s3c24xx_uart_drv, port);
 
@@ -2427,9 +2434,13 @@ static int s3c24xx_serial_resume_noirq(struct device *dev)
 				uintm &= ~S3C64XX_UINTM_TXD_MSK;
 			if (rx_enabled(port))
 				uintm &= ~S3C64XX_UINTM_RXD_MSK;
-			uart_clock_enable(ourport);
+			clk_prepare_enable(ourport->clk);
+			if (!IS_ERR(ourport->baudclk))
+				clk_prepare_enable(ourport->baudclk);
 			wr_regl(port, S3C64XX_UINTM, uintm);
-			uart_clock_disable(ourport);
+			if (!IS_ERR(ourport->baudclk))
+				clk_disable_unprepare(ourport->baudclk);
+			clk_disable_unprepare(ourport->clk);
 		}
 	}
 
