@@ -48,7 +48,6 @@ config SAMSUNG_LMKD_DEBUG
 source "drivers/staging/android/ion/Kconfig"
 source "drivers/staging/android/switch/Kconfig"
 
-
 endif # if ANDROID
 
 endmenu
