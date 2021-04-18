@@ -2430,11 +2430,11 @@ int qtaguid_untag(struct socket *el_socket, bool kernel)
 			     "pid=%u tgid=%u sk_pid=%u, uid=%u\n", __func__,
 			     current->pid, current->tgid, sock_tag_entry->pid,
 			     from_kuid(&init_user_ns, current_fsuid()));
-/*
- * This check is needed because tagging from a process that
- * didn't open /dev/xt_qtaguid still adds the sock_tag_entry
- * to sock_tag_tree.
-*/
+	/*
+	 * This check is needed because tagging from a process that
+	 * didn’t open /dev/xt_qtaguid still adds the sock_tag_entry
+	 * to sock_tag_tree.
+	 */
 	if (sock_tag_entry->list.next)
 		list_del(&sock_tag_entry->list);
 
