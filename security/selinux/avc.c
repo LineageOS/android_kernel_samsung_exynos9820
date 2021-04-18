@@ -873,11 +873,7 @@ static int avc_update_node(u32 event, u32 perms, u8 driver, u8 xperm, u32 ssid,
 	if (orig->ae.xp_node) {
 		rc = avc_xperms_populate(node, orig->ae.xp_node);
 		if (rc) {
-//[SEC_SELINUX_PORTING_COMMON
-// P191014-03912 - avc_cache.active_nodes is not decresed when "avc_alloc_node-success"&"avc_xperms_populate-fail"
-//			kmem_cache_free(avc_node_cachep, node);
 			avc_node_kill(node);
-//]SEC_SELINUX_PORTING_COMMON
 			goto out_unlock;
 		}
 	}
