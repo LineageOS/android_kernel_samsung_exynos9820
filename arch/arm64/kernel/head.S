@@ -775,6 +775,7 @@ __primary_switch:
 	tlbi    vaale1is, xzr                   // dummy TLBI
 #endif
 	dsb	nsh
+	isb
 
 	msr	sctlr_el1, x19			// re-enable the MMU
 	isb
