@@ -1260,7 +1260,7 @@ static struct notifier_block notify_reboot_block = {
 };
 #endif
 
-int fimc_is_resourcemgr_probe(struct fimc_is_resourcemgr *resourcemgr,
+__init int fimc_is_resourcemgr_probe(struct fimc_is_resourcemgr *resourcemgr,
 	void *private_data, struct platform_device *pdev)
 {
 	int ret = 0;
