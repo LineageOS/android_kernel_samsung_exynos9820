@@ -21,9 +21,8 @@
 #include <crypto/sha.h>
 #ifdef CONFIG_CRYPTO_FIPS
 #include <crypto/rng.h>
+#endif
 #include "fscrypt_private.h"
-
-#endif /* CONFIG CRYPTO_FIPS */
 
 /*
  * CONSTANT USED BY OUT OF CRYPTO_ODE

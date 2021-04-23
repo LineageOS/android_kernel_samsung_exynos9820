@@ -261,6 +261,7 @@ static int ecryptfs_calculate_md5(char *dst,
 out:
 	return rc;
 }
+#ifdef CONFIG_CRYPTO_FIPS
 static int ecryptfs_calculate_hash(char *dst,
 				  struct ecryptfs_crypt_stat *crypt_stat,
 				  char *src, int len)
@@ -274,6 +275,7 @@ static int ecryptfs_calculate_hash(char *dst,
 
 	return rc;
 }
+#endif
 static int ecryptfs_crypto_api_algify_cipher_name(char **algified_name,
 						  char *cipher_name,
 						  char *chaining_modifier)
