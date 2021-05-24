@@ -5304,32 +5304,6 @@
 			compatible = "android,firmware";
 			linux,phandle = <0x1e5>;
 			phandle = <0x1e5>;
-
-			fstab {
-				compatible = "android,fstab";
-
-				system {
-					compatible = "android,system";
-					dev = "/dev/block/platform/13d60000.ufs/by-name/system";
-					type = "ext4";
-					mnt_flags = "ro";
-					fsmgr_flags = "wait";
-					status = "disabled";
-					linux,phandle = <0x1e6>;
-					phandle = <0x1e6>;
-				};
-
-				vendor {
-					compatible = "android,vendor";
-					dev = "/dev/block/platform/13d60000.ufs/by-name/vendor";
-					type = "ext4";
-					mnt_flags = "ro";
-					fsmgr_flags = "wait";
-					status = "disabled";
-					linux,phandle = <0x1e7>;
-					phandle = <0x1e7>;
-				};
-			};
 		};
 	};
 
@@ -11346,8 +11320,6 @@
 		mali = "/mali@18500000";
 		chosen = "/chosen";
 		android = "/firmware/android";
-		system = "/firmware/android/fstab/system";
-		vendor = "/firmware/android/fstab/vendor";
 		cpu0 = "/cpus/cpu@0000";
 		cpu1 = "/cpus/cpu@0001";
 		cpu2 = "/cpus/cpu@0002";

@@ -1428,20 +1428,6 @@
 				};
 			};
 
-			firmware {
-
-				android {
-					compatible = "android,firmware";
-					linux,phandle = <0x8b>;
-					phandle = <0x8b>;
-
-					vbmeta {
-						compatible = "android,vbmeta";
-						parts = "vbmeta,boot,system,vendor,product,odm,prism,optics,vbmeta_system,recovery,dtbo,keystorage";
-					};
-				};
-			};
-
 			hs_tune {
 				status = "disabled";
 				hs_tune_cnt = <0x6>;
