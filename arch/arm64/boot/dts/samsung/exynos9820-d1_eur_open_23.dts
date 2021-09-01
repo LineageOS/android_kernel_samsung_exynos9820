@@ -6983,6 +6983,24 @@
 				linux,phandle = <0xd7>;
 				phandle = <0xd7>;
 			};
+
+			ext-bin@12 {
+				status = "okay";
+				samsung,name = "txse3.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x1b33800>;
+				linux,phandle = <0xd8>;
+				phandle = <0xd8>;
+			};
+
+			ext-bin@13 {
+				status = "okay";
+				samsung,name = "APTV_AUDIO_SLSI.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x15f5000>;
+				linux,phandle = <0xd9>;
+				phandle = <0xd9>;
+			};
 		};
 	};
 
@@ -7000,7 +7018,7 @@
 		target = <0xffffffff>;
 
 		__overlay__ {
-			size = <0x3c00000>;
+			size = <0x4000000>;
 		};
 	};
 
@@ -8085,8 +8103,8 @@
 				s2dos05,s2dos05_int = <0xffffffff 0x4 0x0>;
 				adc_mode = <0x2>;
 				adc_sync_mode = <0x2>;
-				linux,phandle = <0xd8>;
-				phandle = <0xd8>;
+				linux,phandle = <0xda>;
+				phandle = <0xda>;
 
 				regulators {
 
@@ -8332,6 +8350,8 @@
 		ext_bin_15 = "/fragment@107/__overlay__/ext-bin@f";
 		ext_bin_16 = "/fragment@107/__overlay__/ext-bin@10";
 		ext_bin_17 = "/fragment@107/__overlay__/ext-bin@11";
+		ext_bin_18 = "/fragment@107/__overlay__/ext-bin@12";
+		ext_bin_19 = "/fragment@107/__overlay__/ext-bin@13";
 		btp_ipc = "/fragment@110/__overlay__/btp-ipc";
 		btp_wuhb = "/fragment@110/__overlay__/btp-wuhb";
 		initial2 = "/fragment@112/__overlay__/initial-state";
