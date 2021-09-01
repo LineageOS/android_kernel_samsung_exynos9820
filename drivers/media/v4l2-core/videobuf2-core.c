@@ -1525,6 +1525,7 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb,
 {
 	struct vb2_buffer *vb;
 	unsigned long flags;
+	enum vb2_buffer_state orig_state;
 	int ret;
 
 	if (q->error) {
@@ -1556,6 +1557,7 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb,
 	 * Add to the queued buffers list, a buffer will stay on it until
 	 * dequeued in dqbuf.
 	 */
+	orig_state = vb->state;
 	list_add_tail(&vb->queued_entry, &q->queued_list);
 	q->queued_count++;
 	q->waiting_for_buffers = false;
@@ -1619,8 +1621,17 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb,
 	if (q->streaming && !q->start_streaming_called &&
 	    __get_num_ready_buffers(q) >= q->min_buffers_needed) {
 		ret = vb2_start_streaming(q);
-		if (ret)
+		if (ret) {
+			/*
+			 * Since vb2_core_qbuf will return with an error,
+			 * we should return it to state DEQUEUED since
+			 * the error indicates that the buffer wasn't queued.
+			 */
+			list_del(&vb->queued_entry);
+			q->queued_count--;
+			vb->state = orig_state;
 			goto err;
+		}
 	}
 
 	/* Fill buffer information for the userspace */
