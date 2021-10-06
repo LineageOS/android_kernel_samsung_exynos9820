@@ -99,7 +99,7 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 							 exynos_ehld_callback, NULL);
 		if (IS_ERR(event)) {
 			ehld_printk(0, "@%s: cpu%d event make failed err:%d\n",
-							__func__, cpu, (int)event);
+							__func__, cpu, (long)event);
 			return PTR_ERR(event);
 		} else {
 			ehld_printk(0, "@%s: cpu%d event make success\n", __func__, cpu);
