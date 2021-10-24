@@ -3502,8 +3502,10 @@ int update_rt_rq_load_avg(u64 now, int cpu, struct rt_rq *rt_rq, int running)
 	rt_rq->load_last_update_time_copy = sa->last_update_time;
 #endif
 
+#ifdef CONFIG_RT_GROUP_SCHED
 	if (running && (decayed || removed_util))
 		rt_rq_util_change(rt_rq);
+#endif
 
 	return decayed;
 }
