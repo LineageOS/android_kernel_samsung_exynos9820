@@ -1672,7 +1672,7 @@ void dec_rt_tasks(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 	dec_rt_group(rt_se, rt_rq);
 }
 
-#ifdef CONFIG_SMP
+#if defined(CONFIG_SMP) && defined(CONFIG_RT_GROUP_SCHED)
 static void
 attach_rt_entity_load_avg(struct rt_rq *rt_rq, struct sched_rt_entity *rt_se)
 {
@@ -1681,9 +1681,7 @@ attach_rt_entity_load_avg(struct rt_rq *rt_rq, struct sched_rt_entity *rt_se)
 	rt_rq->avg.util_sum += rt_se->avg.util_sum;
 	rt_rq->avg.load_avg += rt_se->avg.load_avg;
 	rt_rq->avg.load_sum += rt_se->avg.load_sum;
-#ifdef CONFIG_RT_GROUP_SCHED
 	rt_rq->propagate_avg = 1;
-#endif
 	rt_rq_util_change(rt_rq);
 }
 
@@ -1694,9 +1692,7 @@ detach_rt_entity_load_avg(struct rt_rq *rt_rq, struct sched_rt_entity *rt_se)
 	sub_positive(&rt_rq->avg.util_sum, rt_se->avg.util_sum);
 	sub_positive(&rt_rq->avg.load_avg, rt_se->avg.load_avg);
 	sub_positive(&rt_rq->avg.load_sum, rt_se->avg.load_sum);
-#ifdef CONFIG_RT_GROUP_SCHED
 	rt_rq->propagate_avg = 1;
-#endif
 	rt_rq_util_change(rt_rq);
 }
 #else
@@ -2097,6 +2093,7 @@ static void remove_rt_entity_load_avg(struct sched_rt_entity *rt_se)
 	atomic_long_add(rt_se->avg.util_avg, &rt_rq->removed_util_avg);
 }
 
+#ifdef CONFIG_RT_GROUP_SCHED
 static void attach_task_rt_rq(struct task_struct *p)
 {
 	struct sched_rt_entity *rt_se = &p->rt;
@@ -2116,6 +2113,7 @@ static void detach_task_rt_rq(struct task_struct *p)
 	update_rt_load_avg(now, rt_se);
 	detach_rt_entity_load_avg(rt_rq, rt_se);
 }
+#endif
 
 static void migrate_task_rq_rt(struct task_struct *p)
 {
@@ -2398,13 +2396,13 @@ static void put_prev_task_rt(struct rq *rq, struct task_struct *p)
 
 #ifdef CONFIG_SMP
 
+#ifdef CONFIG_RT_GROUP_SCHED
 void rt_rq_util_change(struct rt_rq *rt_rq)
 {
 	if (&this_rq()->rt == rt_rq)
 		cpufreq_update_util(rt_rq->rq, SCHED_CPUFREQ_RT);
 }
 
-#ifdef CONFIG_RT_GROUP_SCHED
 /* Take into account change of utilization of a child task group */
 static inline void
 update_tg_rt_util(struct rt_rq *cfs_rq, struct sched_rt_entity *rt_se)
@@ -2488,7 +2486,7 @@ static inline int propagate_entity_rt_load_avg(struct sched_rt_entity *rt_se)
 	return 1;
 }
 #else
-static inline int propagate_entity_rt_load_avg(struct sched_rt_entity *rt_se) { };
+static inline int propagate_entity_rt_load_avg(struct sched_rt_entity *rt_se) { return 1; };
 #endif
 
 void update_rt_load_avg(u64 now, struct sched_rt_entity *rt_se)
@@ -2506,8 +2504,10 @@ void update_rt_load_avg(u64 now, struct sched_rt_entity *rt_se)
 	update_rt_rq_load_avg(now, cpu, rt_rq, rt_rq->curr == rt_se);
 	propagate_entity_rt_load_avg(rt_se);
 
+#ifdef CONFIG_RT_GROUP_SCHED
 	if (entity_is_task(rt_se))
 		trace_sched_rt_load_avg_task(rt_task_of(rt_se), &rt_se->avg);
+#endif
 }
 
 /* Only try algorithms three times */
@@ -3457,7 +3457,9 @@ static void rq_offline_rt(struct rq *rq)
  */
 static void switched_from_rt(struct rq *rq, struct task_struct *p)
 {
+#ifdef CONFIG_RT_GROUP_SCHED
 	detach_task_rt_rq(p);
+#endif
 	/*
 	 * If there are other RT tasks then we will reschedule
 	 * and the scheduling of the other RT tasks will handle
