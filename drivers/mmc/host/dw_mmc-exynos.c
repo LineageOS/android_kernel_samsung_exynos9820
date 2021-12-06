@@ -1125,6 +1125,8 @@ static int dw_mci_exynos_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
 		mci_writel(host, CDTHRCTL, 0 << 16 | 0);
 		dw_mci_exynos_set_sample(host, orig_sample, false);
 		ret = -EIO;
+		dev_warn(&mmc->class_dev,
+			"There is no candiates value about clksmpl!\n");
 	}
 
 	/* Rollback Clock drive strength */
