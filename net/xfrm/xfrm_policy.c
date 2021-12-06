@@ -47,7 +47,6 @@ struct xfrm_flo {
 
 static DEFINE_SPINLOCK(xfrm_if_cb_lock);
 static struct xfrm_if_cb const __rcu *xfrm_if_cb __read_mostly;
-
 static DEFINE_SPINLOCK(xfrm_policy_afinfo_lock);
 static struct xfrm_policy_afinfo const __rcu *xfrm_policy_afinfo[AF_INET6 + 1]
 						__read_mostly;
@@ -2042,7 +2041,7 @@ static struct dst_entry *make_blackhole(struct net *net, u16 family,
  */
 struct dst_entry *xfrm_lookup_with_ifid(struct net *net,
 					struct dst_entry *dst_orig,
-			      const struct flowi *fl,
+					const struct flowi *fl,
 					const struct sock *sk,
 					int flags, u32 if_id)
 {
@@ -2337,8 +2336,10 @@ int __xfrm_policy_check(struct sock *sk, int dir, struct sk_buff *skb,
 
 	if (ifcb) {
 		xi = ifcb->decode_session(skb);
-		if (xi)
+		if (xi) {
 			if_id = xi->p.if_id;
+			net = xi->net;
+		}
 	}
 	rcu_read_unlock();
 

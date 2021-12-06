@@ -186,15 +186,18 @@ int detect_share_cap_flag(void)
 		if (!policy)
 			return 0;
 
-		if (cpumask_equal(topology_sibling_cpumask(cpu),
+		if (share_cap_level < share_cap_thread &&
+			cpumask_equal(topology_sibling_cpumask(cpu),
 				  policy->related_cpus)) {
 			share_cap_level = share_cap_thread;
+			cpufreq_cpu_put(policy);
 			continue;
 		}
 
 		if (cpumask_equal(topology_core_cpumask(cpu),
 				  policy->related_cpus)) {
 			share_cap_level = share_cap_core;
+			cpufreq_cpu_put(policy);
 			continue;
 		}
 
@@ -207,8 +210,11 @@ int detect_share_cap_flag(void)
 		if (cpumask_equal(cpu_cpu_mask(cpu),
 				  policy->related_cpus)) {
 			share_cap_level = share_cap_die;
+			cpufreq_cpu_put(policy);
 			continue;
 		}
+
+		cpufreq_cpu_put(policy);
 	}
 
 	if (share_cap != share_cap_level) {

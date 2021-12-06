@@ -1,4 +1,4 @@
-BRANCH=android-4.14-p
+BRANCH=android-4.14-q
 KERNEL_DIR=common
 
 CC=clang

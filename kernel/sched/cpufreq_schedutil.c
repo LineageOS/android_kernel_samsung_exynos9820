@@ -36,7 +36,7 @@
 DECLARE_KAIRISTICS(cpufreq, 32, 25, 24, 25);
 #endif
 
-unsigned long boosted_cpu_util(int cpu, unsigned long other_util);
+unsigned long boosted_cpu_util(int cpu);
 
 #define SUGOV_KTHREAD_PRIORITY	50
 
@@ -431,18 +431,15 @@ skip_betting:
 
 static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 {
-	unsigned long max_cap, rt;
+	unsigned long max_cap;
 
 	max_cap = arch_scale_cpu_capacity(NULL, cpu);
 
-	rt = sched_get_rt_rq_util(cpu);
-
 #ifdef CONFIG_SCHED_EMS
-	*util = ml_boosted_cpu_util(cpu) + rt;
+	*util = ml_boosted_cpu_util(cpu);
 #else
-	*util = boosted_cpu_util(cpu, rt);
+	*util = boosted_cpu_util(cpu);
 #endif
-	*util = freqvar_boost_vector(cpu, *util);
 	*util = min(*util, max_cap);
 	*max = max_cap;
 

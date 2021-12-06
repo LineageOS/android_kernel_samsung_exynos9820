@@ -124,7 +124,9 @@ static const struct nla_policy compat_policy[XFRMA_MAX+1] = {
 	[XFRMA_PROTO]		= { .type = NLA_U8 },
 	[XFRMA_ADDRESS_FILTER]	= { .len = sizeof(struct xfrm_address_filter) },
 	[XFRMA_OFFLOAD_DEV]	= { .len = sizeof(struct xfrm_user_offload) },
-	[XFRMA_OUTPUT_MARK]	= { .type = NLA_U32 },
+	[XFRMA_SET_MARK]	= { .type = NLA_U32 },
+	[XFRMA_SET_MARK_MASK]	= { .type = NLA_U32 },
+	[XFRMA_IF_ID]		= { .type = NLA_U32 },
 };
 
 static struct nlmsghdr *xfrm_nlmsg_put_compat(struct sk_buff *skb,
@@ -268,10 +270,12 @@ static int xfrm_xlate64_attr(struct sk_buff *dst, const struct nlattr *src)
 	case XFRMA_PROTO:
 	case XFRMA_ADDRESS_FILTER:
 	case XFRMA_OFFLOAD_DEV:
-	case XFRMA_OUTPUT_MARK:
+	case XFRMA_SET_MARK:
+	case XFRMA_SET_MARK_MASK:
+	case XFRMA_IF_ID:
 		return xfrm_nla_cpy(dst, src, nla_len(src));
 	default:
-		BUILD_BUG_ON(XFRMA_MAX != XFRMA_OUTPUT_MARK);
+		BUILD_BUG_ON(XFRMA_MAX != XFRMA_IF_ID);
 		WARN_ONCE(1, "unsupported nla_type %d", src->nla_type);
 		return -EOPNOTSUPP;
 	}
@@ -401,7 +405,7 @@ static int xfrm_xlate32_attr(void *dst, const struct nlattr *nla,
 	int err;
 
 	if (type > XFRMA_MAX) {
-		BUILD_BUG_ON(XFRMA_MAX != XFRMA_OUTPUT_MARK);
+		BUILD_BUG_ON(XFRMA_MAX != XFRMA_IF_ID);
 		NL_SET_ERR_MSG(extack, "Bad attribute");
 		return -EOPNOTSUPP;
 	}
