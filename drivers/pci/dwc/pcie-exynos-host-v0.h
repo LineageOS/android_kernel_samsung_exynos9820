@@ -229,7 +229,6 @@ struct exynos_pcie {
 #define PCIE_LINK_CTRL_STAT		0x80
 #define PCI_EXP_LNKCAP_MLW_X1		(0x1 << 4)
 #define PCI_EXP_LNKCAP_L1EL_64USEC	(0x7 << 15)
-#define PCI_EXP_LNKCTL2_TLS		0xf
 #define PCI_EXP_LNKCTL2_TLS_2_5GB	0x1
 #define PCI_EXP_LNKCTL2_TLS_5_0GB	0x2
 #define PCI_EXP_LNKCTL2_TLS_8_0GB	0x3
