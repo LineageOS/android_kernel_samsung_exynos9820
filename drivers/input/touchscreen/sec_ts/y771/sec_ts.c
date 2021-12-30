@@ -3114,6 +3114,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct fb_event *evdata = data;
 	struct sec_ts_data *tc_data = container_of(self, struct sec_ts_data, fb_notif);
 
+	// Only run for internal screen (fb0)
+	if (evdata && evdata->info->node != 0) return 0;
+
 	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		int *blank = evdata->data;
 		switch (*blank) {
