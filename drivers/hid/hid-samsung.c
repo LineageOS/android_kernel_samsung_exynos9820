@@ -520,7 +520,7 @@ static int samsung_probe(struct hid_device *hdev,
 	int ret;
 	unsigned int cmask = HID_CONNECT_DEFAULT;
 
-	if (!hid_is_usb(hdev))
+	if (!(hid_is_usb(hdev) || hdev->bus == BUS_BLUETOOTH))
 		return -EINVAL;
 
 	ret = hid_parse(hdev);
