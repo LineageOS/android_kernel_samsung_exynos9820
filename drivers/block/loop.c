@@ -83,7 +83,7 @@
 static DEFINE_IDR(loop_index_idr);
 static DEFINE_MUTEX(loop_index_mutex);
 
-static int max_part;
+static int max_part = 7;
 static int part_shift;
 
 static int transfer_xor(struct loop_device *lo, int cmd,
@@ -1026,6 +1026,8 @@ static int loop_configure(struct loop_device *lo, fmode_t mode,
 	mapping = file->f_mapping;
 	inode = mapping->host;
 
+	size = get_loop_size(lo, file);
+
 	if ((config->info.lo_flags & ~LOOP_CONFIGURE_SETTABLE_FLAGS) != 0) {
 		error = -EINVAL;
 		goto out_putf;
@@ -1501,8 +1503,10 @@ static int lo_ioctl(struct block_device *bdev, fmode_t mode,
 	case LOOP_CONFIGURE: {
 		struct loop_config config;
 
-		if (copy_from_user(&config, argp, sizeof(config)))
+		if (copy_from_user(&config, argp, sizeof(config))) {
+			mutex_unlock(&lo->lo_ctl_mutex);
 			return -EFAULT;
+		}
 
 		err = loop_configure(lo, mode, bdev, &config);
 		break;
