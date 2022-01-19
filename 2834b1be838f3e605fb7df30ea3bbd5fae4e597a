@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ffc5cc5_8a2c6ae3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 15173
+      },
+      "writtenOn": "2022-01-19T16:46:47Z",
+      "side": 1,
+      "message": "why not just merge the 18 branch into 19 and then rebase everything on top of that?",
+      "revId": "2834b1be838f3e605fb7df30ea3bbd5fae4e597a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
