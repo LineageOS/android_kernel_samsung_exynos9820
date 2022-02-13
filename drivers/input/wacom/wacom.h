@@ -384,6 +384,7 @@ struct wacom_i2c {
 	u32 garage_freq0;
 	u32 garage_freq1;
 #endif
+	bool charging;
 };
 
 struct wacom_i2c *wacom_get_drv_data(void *data);
@@ -425,6 +426,8 @@ void wacom_sec_remove(struct wacom_i2c *);
 void wacom_print_info(struct wacom_i2c *wac_i2c);
 
 int wacom_ble_charge_mode(struct wacom_i2c *wac_i2c, int mode);
+
+int start_epen_ble_charging(struct wacom_i2c *wac_i2c);
 
 extern int set_scan_mode(int mode);
 #ifdef CONFIG_SEC_FACTORY
