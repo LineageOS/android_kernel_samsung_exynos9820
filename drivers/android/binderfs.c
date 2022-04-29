@@ -61,6 +61,7 @@ enum binderfs_stats_mode {
 
 struct binder_features {
 	bool oneway_spam_detection;
+	bool extended_error;
 };
 
 static const match_table_t tokens = {
@@ -71,6 +72,7 @@ static const match_table_t tokens = {
 
 static struct binder_features binder_features = {
 	.oneway_spam_detection = true,
+	.extended_error = true,
 };
 
 static inline struct binderfs_info *BINDERFS_I(const struct inode *inode)
@@ -617,6 +619,12 @@ static int init_binder_features(struct super_block *sb)
 	dentry = binderfs_create_file(dir, "oneway_spam_detection",
 				      &binder_features_fops,
 				      &binder_features.oneway_spam_detection);
+	if (IS_ERR(dentry))
+		return PTR_ERR(dentry);
+
+	dentry = binderfs_create_file(dir, "extended_error",
+				      &binder_features_fops,
+				      &binder_features.extended_error);
 	if (IS_ERR(dentry))
 		return PTR_ERR(dentry);
 
