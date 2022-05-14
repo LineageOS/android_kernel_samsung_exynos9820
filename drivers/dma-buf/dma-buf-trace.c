@@ -65,7 +65,9 @@ static struct list_head buffer_list = LIST_HEAD_INIT(buffer_list);
 static struct dmabuf_trace_task head_task;
 static DEFINE_MUTEX(trace_lock);
 
+#ifdef CONFIG_DEBUG_FS
 static struct dentry *debug_root;
+#endif
 
 static int dmabuf_trace_debug_show(struct seq_file *s, void *unused)
 {
@@ -207,6 +209,7 @@ static struct dmabuf_trace_task *dmabuf_trace_get_task(void)
 	get_task_struct(current->group_leader);
 
 	task->task = current->group_leader;
+#ifdef CONFIG_DEBUG_FS
 	task->debug_task = debugfs_create_file(name, 0444,
 					       debug_root, task,
 					       &dmabuf_trace_debug_fops);
@@ -214,6 +217,7 @@ static struct dmabuf_trace_task *dmabuf_trace_get_task(void)
 		ret = PTR_ERR(task->debug_task);
 		goto err_debugfs;
 	}
+#endif
 
 	ret = get_unused_fd_flags(O_RDONLY | O_CLOEXEC);
 	if (ret < 0)
@@ -238,10 +242,14 @@ err_inode:
 	put_unused_fd(fd);
 err_fd:
 	debugfs_remove(task->debug_task);
+#ifdef CONFIG_DEBUG_FS
 err_debugfs:
+#endif
 	put_task_struct(current->group_leader);
 
 	kfree(task);
+
+	pr_err("%s: Failed to get task(err %d)\n", __func__, ret);
 
 	return ERR_PTR(ret);
 
@@ -478,6 +486,7 @@ err_unregister:
 
 static int __init dmabuf_trace_create(void)
 {
+#ifdef CONFIG_DEBUG_FS
 	debug_root = debugfs_create_dir("footprint", dma_buf_debugfs_dir);
 	if (IS_ERR(debug_root)) {
 		pr_err("%s : Failed to create directory\n", __func__);
@@ -499,6 +508,7 @@ static int __init dmabuf_trace_create(void)
 		       __func__);
 		return PTR_ERR(head_task.debug_task);
 	}
+#endif
 
 	INIT_LIST_HEAD(&head_task.node);
 	INIT_LIST_HEAD(&head_task.ref_list);
