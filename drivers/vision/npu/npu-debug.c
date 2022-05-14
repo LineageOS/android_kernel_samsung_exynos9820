@@ -78,7 +78,7 @@ int npu_debug_register_arg(
 	struct dentry		*dbgfs_entry;
 
 	/* Check whether the debugfs is properly initialized */
-	if (!check_state_bit(FS_READY)) {
+	if (!check_state_bit(FS_READY) || !IS_ENABLED(CONFIG_DEBUG_FS)) {
 		npu_warn("DebugFS not initialized or disabled. Skip creation [%s]\n", name);
 		ret = 0;
 		goto err_exit;

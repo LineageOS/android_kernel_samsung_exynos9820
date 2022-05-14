@@ -1828,6 +1828,7 @@ static const struct file_operations debug_idq_status_fops = {
 	.release	= single_release,
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int bts_debugfs(void)
 {
 	struct dentry *den;
@@ -1868,6 +1869,9 @@ static int bts_debugfs(void)
 
 	return 0;
 }
+#else
+static int bts_debugfs(void) { return 0; }
+#endif /* CONFIG_DEBUG_FS */
 
 void bts_pd_sync(unsigned int id, int on)
 {
