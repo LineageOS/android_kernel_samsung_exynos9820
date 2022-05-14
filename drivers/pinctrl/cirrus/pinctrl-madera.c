@@ -482,6 +482,7 @@ static int madera_get_group_pins(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void madera_pin_dbg_show_fn(struct madera_pin_private *priv,
 				   struct seq_file *s,
 				   unsigned int pin, unsigned int fn)
@@ -562,6 +563,7 @@ static void madera_pin_dbg_show(struct pinctrl_dev *pctldev,
 	if (conf[0] & MADERA_GP1_IP_CFG_MASK)
 		seq_puts(s, "SCHMITT");
 }
+#endif /* CONFIG_DEBUG_FS */
 
 static const struct pinctrl_ops madera_pin_group_ops = {
 	.get_groups_count = madera_get_groups_count,
