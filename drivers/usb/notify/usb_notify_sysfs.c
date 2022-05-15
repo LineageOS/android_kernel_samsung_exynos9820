@@ -261,9 +261,17 @@ static ssize_t usb_data_enabled_store(
 
 	if (udev->set_disable) {
 		if (strcmp(usb_data_enabled, "0") == 0) {
+			if (!udev->usb_data_enabled) {
+				pr_err("%s already disabled", __func__);
+				goto error1;
+			}
 			param = NOTIFY_BLOCK_TYPE_ALL;
 			udev->usb_data_enabled = 0;
 		} else if (strcmp(usb_data_enabled, "1") == 0) {
+			if (udev->usb_data_enabled) {
+				pr_err("%s already enabled", __func__);
+				goto error1;
+			}
 			param = NOTIFY_BLOCK_TYPE_NONE;
 			udev->usb_data_enabled = 1;
 		} else {
