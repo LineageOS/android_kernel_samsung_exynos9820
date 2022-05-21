@@ -2045,7 +2045,8 @@ unknown:
 				if (w_index != 0x5 || (w_value >> 8))
 					break;
 				interface = w_value & 0xFF;
-				if (interface >= os_desc_cfg->next_interface_id)
+				if (interface >= MAX_CONFIG_INTERFACES ||
+				    !os_desc_cfg->interface[interface])
 					break;
 				buf[6] = w_index;
 				if (w_length == 0x0A) {
