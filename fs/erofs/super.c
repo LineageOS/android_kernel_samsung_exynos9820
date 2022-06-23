@@ -402,7 +402,8 @@ static int erofs_fill_super(struct super_block *sb, void *data, int silent)
 		sb->s_flags &= ~SB_POSIXACL;
 
 #ifdef CONFIG_EROFS_FS_ZIP
-	INIT_RADIX_TREE(&sbi->workstn_tree, GFP_ATOMIC);
+	INIT_RADIX_TREE(&sbi->workstn.tree, GFP_ATOMIC);
+	spin_lock_init(&sbi->workstn.lock);
 #endif
 
 	/* get the root inode */

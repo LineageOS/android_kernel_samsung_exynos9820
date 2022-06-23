@@ -67,7 +67,7 @@ struct erofs_workgroup *erofs_find_workgroup(struct super_block *sb,
 
 repeat:
 	rcu_read_lock();
-	grp = radix_tree_lookup(&sbi->workstn_tree, index);
+	grp = radix_tree_lookup(&sbi->workstn.tree, index);
 	if (grp) {
 		if (erofs_workgroup_get(grp)) {
 			/* prefer to relax rcu read side */
@@ -98,16 +98,16 @@ int erofs_register_workgroup(struct super_block *sb,
 		return err;
 
 	sbi = EROFS_SB(sb);
-	//xa_lock(&sbi->workstn_tree);
+	erofs_workstn_lock(sbi);
 
 	/*
 	 * Bump up reference count before making this workgroup
 	 * visible to other users in order to avoid potential UAF
-	 * without serialized by workstn_lock.
+	 * without serialized by erofs_workstn_lock.
 	 */
 	__erofs_workgroup_get(grp);
 
-	err = radix_tree_insert(&sbi->workstn_tree, grp->index, grp);
+	err = radix_tree_insert(&sbi->workstn.tree, grp->index, grp);
 	if (err)
 		/*
 		 * it's safe to decrease since the workgroup isn't visible
@@ -115,7 +115,7 @@ int erofs_register_workgroup(struct super_block *sb,
 		 */
 		__erofs_workgroup_put(grp);
 
-	//xa_unlock(&sbi->workstn_tree);
+	erofs_workstn_unlock(sbi);
 	radix_tree_preload_end();
 	return err;
 }
@@ -171,7 +171,7 @@ static bool erofs_try_to_release_workgroup(struct erofs_sb_info *sbi,
 	 * however in order to avoid some race conditions, add a
 	 * DBG_BUGON to observe this in advance.
 	 */
-	DBG_BUGON(radix_tree_delete(&sbi->workstn_tree, grp->index) != grp);
+	DBG_BUGON(radix_tree_delete(&sbi->workstn.tree, grp->index) != grp);
 
 	/*
 	 * If managed cache is on, last refcount should indicate
@@ -191,9 +191,9 @@ static unsigned long erofs_shrink_workstation(struct erofs_sb_info *sbi,
 
 	int i, found;
 repeat:
-	//xa_lock(&sbi->workstn_tree);
+	erofs_workstn_lock(sbi);
 
-	found = radix_tree_gang_lookup(&sbi->workstn_tree,
+	found = radix_tree_gang_lookup(&sbi->workstn.tree,
 				       batch, first_index, PAGEVEC_SIZE);
 
 	for (i = 0; i < found; ++i) {
@@ -209,7 +209,7 @@ repeat:
 		if (!--nr_shrink)
 			break;
 	}
-	//xa_unlock(&sbi->workstn_tree);
+	erofs_workstn_unlock(sbi);
 
 	if (i && nr_shrink)
 		goto repeat;

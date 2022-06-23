@@ -169,7 +169,7 @@ static int z_erofs_lz4_decompress(struct z_erofs_decompress_req *rq, u8 *out)
 					test_opt(EROFS_SB(rq->sb), LZ4ASM),
 					rq->inplace_io);
 #else
-  	ret = LZ4_decompress_safe_partial(src + inputmargin, out,
+	ret = LZ4_decompress_safe_partial(src + inputmargin, out,
 					  inlen, rq->outputsize,
 					  rq->outputsize);
 #endif

@@ -643,11 +643,7 @@ restart_now:
 
 	/* preload all compressed pages (maybe downgrade role if necessary) */
 	if (should_alloc_managed_pages(fe, sbi->cache_strategy, map->m_la))
-#if defined(CONFIG_OPLUS_FEATURE_EROFS)
 		cache_strategy = TRYALLOC;
-#else
-		cache_strategy = DELAYEDALLOC;
-#endif
 	else
 		cache_strategy = DONTALLOC;
 
@@ -741,14 +737,10 @@ static void z_erofs_vle_unzip_kickoff(void *ptr, int bios)
 	}
 
 	if (!atomic_add_return(bios, &io->pending_bios)){
-#if defined(CONFIG_OPLUS_FEATURE_EROFS) && defined(CONFIG_PREEMPT_COUNT)
-	if (in_atomic() || irqs_disabled())
-		queue_work(z_erofs_workqueue, &io->u.work);
-	else
-		z_erofs_vle_unzip_wq(&io->u.work);
-#else
-		queue_work(z_erofs_workqueue, &io->u.work);
-#endif
+		if (in_atomic() || irqs_disabled())
+			queue_work(z_erofs_workqueue, &io->u.work);
+		else
+			z_erofs_vle_unzip_wq(&io->u.work);
 	}
 }
 

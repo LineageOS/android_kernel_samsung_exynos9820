@@ -91,7 +91,7 @@ config EROFS_FS_CLUSTER_PAGE_LIMIT
 
 config OPLUS_FEATURE_EROFS
 	bool "EROFS oplus repo"
-	default n
+	default y
 	depends on EROFS_FS
 	help
 	  define this config to switch oplus repo.

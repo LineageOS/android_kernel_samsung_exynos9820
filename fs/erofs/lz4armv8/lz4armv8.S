@@ -40,8 +40,8 @@
 #define save_dst		x15
 #define save_src		x16
 #define offset_src_ptr		x17
-#define w_tmp_match_length	w18
-#define tmp_match_length	x18
+#define w_tmp_match_length	w6
+#define tmp_match_length	x6
 
 
 /* x3 >= x4 src overflow */
