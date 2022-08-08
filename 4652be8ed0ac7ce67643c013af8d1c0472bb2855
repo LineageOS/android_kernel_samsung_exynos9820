@@ -33,6 +33,24 @@
       "message": "check comment https://review.lineageos.org/c/LineageOS/android_kernel_xiaomi_msm8998/+/248103",
       "revId": "4652be8ed0ac7ce67643c013af8d1c0472bb2855",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e0dfc46_376251ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31553
+      },
+      "writtenOn": "2022-08-08T14:04:49Z",
+      "side": 1,
+      "message": "Of course, but I think we can count it relatively safe - its impossible to alter iptables rules without root which implies that the user knows what he is doing.\n\nBesides, other devices seem to have the same patch merged:\nhttps://review.lineageos.org/c/LineageOS/android_kernel_oneplus_sm8250/+/305923\nhttps://review.lineageos.org/c/LineageOS/android_kernel_leeco_msm8996/+/241114\nhttps://review.lineageos.org/c/LineageOS/android_kernel_motorola_msm8610/+/198276\nAnd lot more if you just search LineageOS GitHub organization for \"CONFIG_IP_NF_TARGET_TTL\", some devices compile it as a module.\n\nOne more thing, I think that advanced users who need this feature (which, again, is inaccessible without root) will have to replace the kernel altogether, which feels like a lot more dangerous solution",
+      "parentUuid": "2601de28_894d03e5",
+      "revId": "4652be8ed0ac7ce67643c013af8d1c0472bb2855",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
