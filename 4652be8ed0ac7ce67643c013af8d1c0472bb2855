@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2738070e_55613a9f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31553
+      },
+      "writtenOn": "2022-08-08T10:09:23Z",
+      "side": 1,
+      "message": "This should allow overriding TTL with iptables",
+      "revId": "4652be8ed0ac7ce67643c013af8d1c0472bb2855",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
