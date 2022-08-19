@@ -492,7 +492,7 @@ __bad_stack:
 	 * S_FRAME_SIZE) was stashed in tpidr_el0 by kernel_ventry.
 	 */
 	sub	sp, sp, #S_FRAME_SIZE
-	kernel_entry fake_el_bad_stack
+	kernel_entry 1
 	mrs	x0, tpidr_el0
 	add	x0, x0, #(S_FRAME_SIZE+PRESERVE_STACK_SIZE)
 	str	x0, [sp, #S_SP]
