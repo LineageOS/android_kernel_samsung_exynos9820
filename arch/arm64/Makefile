@@ -47,6 +47,7 @@ lseinstr := $(call as-instr,.arch_extension lse,-DCONFIG_AS_LSE=1)
 ifeq ($(CONFIG_SEC_ARM64_LSE_ATOMICS),y)
   ifeq ($(cc-name),clang)
 lseinstr := -DCONFIG_AS_LSE=1
+KBUILD_CFLAGS += -march=armv8-a+lse
   endif
 endif
 
