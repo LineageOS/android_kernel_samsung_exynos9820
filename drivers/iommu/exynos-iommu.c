@@ -570,7 +570,7 @@ static int __init exynos_sysmmu_probe(struct platform_device *pdev)
 	ret = iommu_device_register(&data->iommu);
 	if (ret) {
 		dev_err(dev, "Failed to register device\n");
-		return ret;
+		goto err_iommu_register;
 	}
 
 	pm_runtime_enable(dev);
@@ -584,6 +584,10 @@ static int __init exynos_sysmmu_probe(struct platform_device *pdev)
 			MMU_REV_VER(data->version));
 
 	return 0;
+
+err_iommu_register:
+	iommu_device_sysfs_remove(&data->iommu);
+	return ret;
 }
 
 static bool __sysmmu_disable(struct sysmmu_drvdata *drvdata)
