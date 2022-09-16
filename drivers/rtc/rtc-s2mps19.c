@@ -837,7 +837,7 @@ static int s2m_rtc_probe(struct platform_device *pdev)
 	s2m_rtc_optimize_osc(info, pdata);
 
 	device_init_wakeup(&pdev->dev, true);
-	rtc_ws = wakeup_source_register("rtc-s2mp");
+	rtc_ws = wakeup_source_register(&pdev->dev, "rtc-s2mp");
 
 	ret = devm_request_threaded_irq(&pdev->dev, info->irq, NULL,
 			s2m_rtc_alarm_irq, 0, "rtc-alarm0", info);
