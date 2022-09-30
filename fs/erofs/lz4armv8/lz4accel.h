@@ -1,3 +1,4 @@
+#include <linux/smp.h>
 #include <linux/types.h>
 #include <asm/simd.h>
 
