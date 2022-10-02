@@ -14,7 +14,7 @@
 
 #define LZ4_MAX_DISTANCE_PAGES	(DIV_ROUND_UP(LZ4_DISTANCE_MAX, PAGE_SIZE) + 1)
 #ifndef LZ4_DECOMPRESS_INPLACE_MARGIN
-#ifdef CONFIG_OPLUS_FEATURE_EROFS
+#ifdef CONFIG_EROFS_FS_ARMV8_ACCELERATED_LZ4
 #define LZ4_DECOMPRESS_INPLACE_MARGIN(srcsize)  (((srcsize) >> 8) + 65)
 #else
 #define LZ4_DECOMPRESS_INPLACE_MARGIN(srcsize)  (((srcsize) >> 8) + 32)
@@ -163,7 +163,7 @@ static int z_erofs_lz4_decompress(struct z_erofs_decompress_req *rq, u8 *out)
 			copied = true;
 		}
 	}
-#ifdef CONFIG_OPLUS_FEATURE_EROFS
+#ifdef CONFIG_EROFS_FS_ARMV8_ACCELERATED_LZ4
 	ret = z_erofs_lz4_decompress_partial(src + inputmargin, out,
 					inlen, rq->outputsize,
 					test_opt(EROFS_SB(rq->sb), LZ4ASM),
