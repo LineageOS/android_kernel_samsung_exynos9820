@@ -107,6 +107,7 @@ static LIST_HEAD(drvdata_list);
 #define S3C64XX_SPI_ST_TX_FIFORDY		(1<<0)
 
 #define S3C64XX_SPI_PACKET_CNT_EN		(1<<16)
+#define S3C64XX_SPI_PACKET_CNT_MASK		GENMASK(15, 0)
 
 #define S3C64XX_SPI_PND_TX_UNDERRUN_CLR		(1<<4)
 #define S3C64XX_SPI_PND_TX_OVERRUN_CLR		(1<<3)
@@ -918,6 +919,12 @@ static void s3c64xx_spi_unmap_one_msg(struct s3c64xx_spi_driver_data *sdd,
 					xfer->len, DMA_TO_DEVICE);
 }
 
+static size_t s3c64xx_spi_max_transfer_size(struct spi_device *spi)
+{
+	struct spi_controller *ctlr = spi->controller;
+
+	return ctlr->can_dma ? S3C64XX_SPI_PACKET_CNT_MASK : SIZE_MAX;
+}
 
 static int s3c64xx_spi_transfer_one_message(struct spi_master *master,
 					    struct spi_message *msg)
@@ -1680,6 +1687,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	master->cleanup = s3c64xx_spi_cleanup;
 	master->prepare_transfer_hardware = s3c64xx_spi_prepare_transfer;
 	master->transfer_one_message = s3c64xx_spi_transfer_one_message;
+	master->max_transfer_size = s3c64xx_spi_max_transfer_size;
 	master->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
 	master->num_chipselect = sci->num_cs;
 	master->dma_alignment = 8;
