@@ -397,3 +397,23 @@ int decon_displayport_set_config(struct decon_device *decon,
 	mutex_unlock(&decon->lock);
 	return ret;
 }
+
+int decon_displayport_get_edid(struct decon_device *decon,
+		struct decon_edid_data *edid)
+{
+	struct displayport_device *displayport = get_displayport_drvdata();
+	int i = 0;
+	int ret = 0;
+
+	mutex_lock(&decon->lock);
+
+	edid->size = displayport->rx_edid_data.edid_data_size;
+	if (edid->size <= 0)
+		ret = -EINVAL;
+
+	for (i = 0; i < edid->size; i++)
+		edid->edid_data[i] = displayport->rx_edid_data.edid_buf[i];
+
+	mutex_unlock(&decon->lock);
+	return ret;
+}

@@ -112,45 +112,37 @@ static int edid_read_block(struct displayport_device *hdev, int block, u8 *buf, 
 	return 0;
 }
 
-int edid_read(struct displayport_device *hdev, u8 **data)
+int edid_read(struct displayport_device *hdev)
 {
-	u8 block0[EDID_BLOCK_SIZE];
-	u8 *edid;
 	int block = 0;
 	int block_cnt, ret;
+	u8 *edid_buf = hdev->rx_edid_data.edid_buf;
 
-	ret = edid_read_block(hdev, 0, block0, sizeof(block0));
+	ret = edid_read_block(hdev, 0, edid_buf, EDID_BLOCK_SIZE);
 	if (ret)
 		return ret;
 
-	ret = edid_checksum(block0, block);
+	ret = edid_checksum(edid_buf, block);
 	if (ret)
 		return ret;
 
-	block_cnt = block0[EDID_EXTENSION_FLAG] + 1;
+	block_cnt = edid_buf[EDID_EXTENSION_FLAG] + 1;
 	displayport_info("block_cnt = %d\n", block_cnt);
 
-	edid = kmalloc(block_cnt * EDID_BLOCK_SIZE, GFP_KERNEL);
-	if (!edid)
-		return -ENOMEM;
-
-	memcpy(edid, block0, sizeof(block0));
-
 	while (++block < block_cnt) {
+		u8 *edid_ext = edid_buf + (block * EDID_BLOCK_SIZE);
+
 		ret = edid_read_block(hdev, block,
-			edid + (block * EDID_BLOCK_SIZE),
+			edid_ext,
 			EDID_BLOCK_SIZE);
 
 		/* check error, extension tag and checksum */
-		if (ret || *(edid + (block * EDID_BLOCK_SIZE)) != 0x02 ||
-				edid_checksum(edid + (block * EDID_BLOCK_SIZE), block)) {
+		if (ret || *edid_ext != 0x02 ||
+				edid_checksum(edid_ext, block)) {
 			displayport_info("block_cnt:%d/%d, ret: %d\n", block, block_cnt, ret);
-			*data = edid;
 			return block;
 		}
 	}
-
-	*data = edid;
 
 	return block_cnt;
 }
@@ -853,7 +845,7 @@ int edid_update(struct displayport_device *hdev)
 	struct fb_monspecs specs;
 	struct fb_vendor vsdb;
 	struct fb_audio sad;
-	u8 *edid = NULL;
+	u8 *edid = hdev->rx_edid_data.edid_buf;
 	int block_cnt = 0;
 	int i;
 	int basic_audio = 0;
@@ -889,11 +881,13 @@ int edid_update(struct displayport_device *hdev)
 		block_cnt = hdev->edid_test_buf[0];
 		displayport_info("using test edid %d\n", block_cnt);
 	} else
-		block_cnt = edid_read(hdev, &edid);
+		block_cnt = edid_read(hdev);
 	if (block_cnt < 0) {
 		hdev->bpc = BPC_6;
 		goto out;
 	}
+
+	hdev->rx_edid_data.edid_data_size = EDID_BLOCK_SIZE * block_cnt;
 
 #ifdef CONFIG_SEC_DISPLAYPORT_BIGDATA
 	secdp_bigdata_save_item(BD_EDID, edid);

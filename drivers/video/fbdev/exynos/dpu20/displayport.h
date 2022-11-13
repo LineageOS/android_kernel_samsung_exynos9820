@@ -580,6 +580,9 @@ static const unsigned int extcon_id[] = {
 };
 #endif
 
+#define MAX_EDID_BLOCK 4
+#define EDID_BLOCK_SIZE 128
+
 struct edid_data {
 	int max_support_clk;
 	bool support_10bpc;
@@ -588,6 +591,9 @@ struct edid_data {
 	u8 max_lumi_data;
 	u8 max_average_lumi_data;
 	u8 min_lumi_data;
+
+	int edid_data_size;
+	u8 edid_buf[MAX_EDID_BLOCK * EDID_BLOCK_SIZE];
 };
 enum dp_state {
 	DP_DISCONNECT,
@@ -745,7 +751,6 @@ struct displayport_debug_param {
 #define AUX_RETRY_COUNT 3
 #define AUX_TIMEOUT_1800us 0x03
 
-#define EDID_BLOCK_SIZE 128
 #define DATA_BLOCK_TAG_CODE_MASK 0xE0
 #define DATA_BLOCK_LENGTH_MASK 0x1F
 #define DATA_BLOCK_TAG_CODE_BIT_POSITION 5
@@ -1335,7 +1340,7 @@ bool is_displayport_not_running(void);
 
 int displayport_reg_stand_alone_crc_sorting(void);
 
-int edid_read(struct displayport_device *hdev, u8 **data);
+int edid_read(struct displayport_device *hdev);
 int edid_update(struct displayport_device *hdev);
 struct v4l2_dv_timings edid_preferred_preset(void);
 void edid_set_preferred_preset(int mode);

@@ -3237,6 +3237,7 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 	struct decon_disp_info __user *argp_info;
 	struct dpp_restrictions_info __user *argp_res;
 	struct decon_color_mode_info cm_info;
+	struct decon_edid_data edid_data;
 	u32 color_mode;
 	int ret = 0;
 	u32 crtc;
@@ -3555,6 +3556,31 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 		/* ADD additional action if necessary */
 
 		break;
+
+	case EXYNOS_GET_EDID:
+		if (decon->dt.out_type == DECON_OUT_DP) {
+#if defined(CONFIG_EXYNOS_DISPLAYPORT)
+			ret = decon_displayport_get_edid(decon, &edid_data);
+
+			if (copy_to_user((struct decon_edid_data __user *)arg,
+					&edid_data, sizeof(edid_data))) {
+				ret = -EFAULT;
+				break;
+			}
+#endif
+		} else if (decon->dt.out_type == DECON_OUT_DSI) {
+			memset(&edid_data, 0, sizeof(struct decon_edid_data));
+			decon_get_edid(decon, &edid_data);
+			if (copy_to_user((struct decon_edid_data __user *)arg,
+					&edid_data, sizeof(edid_data))) {
+				ret = -EFAULT;
+				break;
+			}
+		} else {
+			ret = -EFAULT;
+		}
+		break;
+
 
 	default:
 		decon_err("DECON:ERR:%s:invalid command : 0x%x\n", __func__, cmd);
