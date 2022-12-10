@@ -30,6 +30,8 @@
 #define MAX_CONNECTION_ATTEMPTS 20
 #define CONNECTION_ATTEMPT_TIMEOUT 100
 
+bool use_new_tzar;
+
 __asm__ (
   ".section .init.data,\"aw\"\n"
   "tzdev_tzar_begin:\n"
@@ -38,6 +40,15 @@ __asm__ (
   ".previous\n"
 );
 extern char tzdev_tzar_begin[], tzdev_tzar_end[];
+
+__asm__ (
+  ".section .init.data,\"aw\"\n"
+  "tzdev_old_tzar_begin:\n"
+  ".incbin \"" KBUILD_SRC "/drivers/misc/tzdev/startup_old.tzar\"\n"
+  "tzdev_old_tzar_end:\n"
+  ".previous\n"
+);
+extern char tzdev_old_tzar_begin[], tzdev_old_tzar_end[];
 
 enum iw_startup_loader_cmd_type {
 	CMD_STARTUP_LOADER_INVALID_ID,
@@ -59,7 +70,7 @@ struct cmd_startup_loader_reply_upload_container {
 static __ref int tz_deploy_handler(void *arg)
 {
 	int ret, retry_cnt;
-	size_t size;
+	size_t size, old_size;
 	struct sock_desc *sd;
 	struct cmd_startup_loader_upload_container command;
 	struct cmd_startup_loader_reply_upload_container reply;
@@ -72,20 +83,24 @@ static __ref int tz_deploy_handler(void *arg)
 	reply.base.result = -1;
 
 	size = tzdev_tzar_end - tzdev_tzar_begin;
-	tzdev_print(0, "[debug] tzar size = %zu\n", size);
+	old_size = tzdev_old_tzar_end - tzdev_old_tzar_begin;
+	tzdev_print(0, "[debug] tzar size = %zu, old_tzar size = %zu\n", size, old_size);
 
 	for (retry_cnt = 0; retry_cnt < MAX_LOADING_ATTEMPTS; retry_cnt++) {
-		tzar = vmalloc(size);
+		use_new_tzar = retry_cnt % 2 == 0;
+
+		tzar = use_new_tzar ? vmalloc(size) : vmalloc(old_size);
 		if (!tzar) {
 			tzdev_print(0, "vmalloc fail\n");
 			ret = -ENOMEM;
 			continue;
 		}
 
-		memcpy(tzar, tzdev_tzar_begin, size);
+		memcpy(tzar, use_new_tzar ? tzdev_tzar_begin : tzdev_old_tzar_begin, use_new_tzar ? size : old_size);
 
 		size = DIV_ROUND_UP(size, PAGE_SIZE) * PAGE_SIZE;
-		ret = tzdev_mem_register(tzar, size, 0, NULL, NULL);
+		old_size = DIV_ROUND_UP(old_size, PAGE_SIZE) * PAGE_SIZE;
+		ret = tzdev_mem_register(tzar, use_new_tzar ? size : old_size, 0, NULL, NULL);
 		if (ret < 0) {
 			tzdev_print(0, "tzdev_mem_register fail, ret=%d\n", ret);
 			goto out_tzar;
@@ -93,7 +108,7 @@ static __ref int tz_deploy_handler(void *arg)
 
 		command.base.cmd = CMD_STARTUP_LOADER_UPLOAD_CONTAINER;
 		command.buf_desc.id = ret;
-		command.buf_desc.size = (unsigned int)size;
+		command.buf_desc.size = use_new_tzar ? (unsigned int)size : (unsigned int)old_size;
 
 		sd = tz_iwsock_socket(1);
 		if (IS_ERR(sd)) {
