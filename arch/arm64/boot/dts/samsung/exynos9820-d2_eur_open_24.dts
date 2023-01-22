@@ -879,6 +879,7 @@
 				battery,chg_temp_check_type = <0x2>;
 				battery,wpc_temp_check_type = <0x2>;
 				battery,dchg_temp_check_type = <0x2>;
+				battery,lrp_temp_check_type = <0x0>;
 				battery,thermal_source = <0x2>;
 				battery,usb_thermal_source = <0x2>;
 				battery,chg_thermal_source = <0x2>;
