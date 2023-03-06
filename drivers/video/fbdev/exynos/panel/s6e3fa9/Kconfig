@@ -1,0 +1,7 @@
+menuconfig EXYNOS_DECON_LCD_S6E3FA9
+	tristate "S6E3FA9 DDI Panel Driver"
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	help
+		This enables S6E3FA9 DDI dependent panel drivers of
+		common panel driver. say Y, if you have a panel based on
+		the S6E3FA9 DDI.

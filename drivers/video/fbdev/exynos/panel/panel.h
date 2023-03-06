@@ -659,6 +659,9 @@ struct seqinfo {
 	.size = ARRAY_SIZE((_cmdtbl_)),		\
 }
 
+#define DEFINE_SEQINFO(_name_, _cmdtbl_) \
+struct seqinfo SEQINFO(_name_) = SEQINFO_INIT((#_name_), (_cmdtbl_))
+
 struct brt_map {
 	int brt;
 	int lum;
@@ -738,6 +741,12 @@ enum {
 };
 
 enum {
+	SMOOTH_TRANS_OFF,
+	SMOOTH_TRANS_ON,
+	SMOOTH_TRANS_MAX,
+};
+
+enum {
 	ACL_OPR_OFF,
 	ACL_OPR_03P,
 	ACL_OPR_06P,
@@ -753,6 +762,12 @@ enum {
 	HLPM_LOW_BR,
 	ALPM_HIGH_BR,
 	HLPM_HIGH_BR,
+};
+
+enum {
+	PANEL_HBM_OFF,
+	PANEL_HBM_ON,
+	MAX_PANEL_HBM,
 };
 
 #ifdef CONFIG_SUPPORT_XTALK_MODE

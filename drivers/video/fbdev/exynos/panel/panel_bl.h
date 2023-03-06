@@ -74,12 +74,21 @@ enum {
 	MAX_IRC_PARAM,
 };
 
+enum brightness_control_type {
+	BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE1,
+	BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE2,
+	MAX_BRIGHTNESS_CONTROL_TYPE
+};
+
 struct brightness_table {
+	int control_type;
 	/* brightness to step count between brightness */
 	u32 *step_cnt;
 	u32 sz_step_cnt;
 	/* brightness to step mapping table */
 	u32 *brt_to_step;
+	u32 sz_ui_brt;
+	u32 sz_hbm_brt;
 	u32 sz_brt_to_step;
 	/* brightness to brightness mapping table */
 	u32 (*brt_to_brt)[2];
@@ -134,6 +143,7 @@ struct panel_bl_properties {
 	int acl_pwrsave;
 	int acl_opr;
 	int aor_ratio;
+	int smooth_transition;
 };
 
 struct panel_bl_sub_dev {

@@ -522,6 +522,14 @@ static int __panel_seq_init(struct panel_device *panel)
 		panel_err("PANEL:ERR:%s, failed to write init seqtbl\n", __func__);
 		goto err_init_seq;
 	}
+#if 0
+#ifdef CONFIG_DYNAMIC_FREQ
+	if (panel->df_status.current_ddi_osc == 1) {
+		if (panel_do_seqtbl_by_index_nolock(panel, PANEL_COMP_LPTS_SEQ) < 0)
+			panel_err("failed to write init seqtbl\n");
+	}
+#endif
+#endif
 	mutex_unlock(&panel->op_lock);
 	mutex_unlock(&panel_bl->lock);
 

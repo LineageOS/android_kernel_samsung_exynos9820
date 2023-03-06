@@ -105,6 +105,8 @@ bool is_hbm_brightness(struct panel_bl_device *panel_bl, int brightness)
 	}
 
 	subdev = &panel_bl->subdev[panel_bl->props.id];
+	if (subdev->brt_tbl.control_type == BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE2)
+		return (brightness > subdev->brt_tbl.brt[subdev->brt_tbl.sz_ui_brt - 1]);
 	luminance = get_actual_brightness(panel_bl, brightness);
 
 	sz_ui_lum = subdev->brt_tbl.sz_ui_lum;
@@ -130,6 +132,8 @@ bool is_ext_hbm_brightness(struct panel_bl_device *panel_bl, int brightness)
 	}
 
 	subdev = &panel_bl->subdev[panel_bl->props.id];
+	if (subdev->brt_tbl.control_type == BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE2)
+		return false;
 	luminance = get_actual_brightness(panel_bl, brightness);
 
 	sz_ui_lum = subdev->brt_tbl.sz_ui_lum;

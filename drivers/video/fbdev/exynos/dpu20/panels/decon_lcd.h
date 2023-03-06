@@ -139,6 +139,8 @@ struct df_status_info {
 	u32 current_df;
 	u32 ffc_df;
 	u32 context;
+
+	u32 current_ddi_osc;
 };
 
 

@@ -12,6 +12,7 @@ obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3HA6) += s6e3ha6/s6e3ha6.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3HA8) += s6e3ha8/s6e3ha8.o s6e3ha8/s6e3ha8_aod.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3HA9) += s6e3ha9/s6e3ha9.o s6e3ha9/s6e3ha9_aod.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3FA7) += s6e3fa7/s6e3fa7.o s6e3fa7/s6e3fa7_aod.o
+obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3FA9) += s6e3fa9/s6e3fa9.o s6e3fa9/s6e3fa9_aod.o
 obj-$(CONFIG_EXYNOS_DECON_MDNIE_LITE) += mdnie.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_SYSFS) += sysfs.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_SPI) += spi.o

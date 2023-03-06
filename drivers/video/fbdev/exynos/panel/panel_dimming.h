@@ -28,6 +28,7 @@ struct panel_dimming_info {
 	bool dim_flash_on;
 	s32 *dim_flash_gamma_offset;
 	struct panel_irc_info *irc_info;
+	u8 *hbm_aor;
 };
 
 enum {
