@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 dtb-y += exynos/exynos9820.dtb
+dtb-y += exynos/exynos9825-r.dtb
 
 dtbo-y += samsung/exynos9820-beyond0lte_eur_open_24.dtbo
 dtbo-y += samsung/exynos9820-beyond0lte_eur_open_22.dtbo
@@ -67,6 +68,11 @@ dtbo-y += samsung/exynos9820-d2x_eur_open_02.dtbo
 dtbo-y += samsung/exynos9820-d2x_eur_open_18.dtbo
 dtbo-y += samsung/exynos9820-d2x_eur_open_22.dtbo
 dtbo-y += samsung/exynos9820-d2x_eur_open_23.dtbo
+
+dtbo-y += samsung/exynos9825-f62_swa_ins_00.dtbo
+dtbo-y += samsung/exynos9825-f62_swa_ins_01.dtbo
+dtbo-y += samsung/exynos9825-f62_swa_ins_02.dtbo
+dtbo-y += samsung/exynos9825-f62_swa_ins_03.dtbo
 
 targets += dtbs
 DTB_LIST  := $(dtb-y) $(dtbo-y)
