@@ -1,7 +1,7 @@
 /*
  * leds-ir-ktd2692.h - Flash-led driver for KTD 2692
  *
- * Copyright (C) 2011 Samsung Electronics
+ * Copyright (C) 2020 Samsung Electronics
  * Sunggeun Yim <sunggeun.yim@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,21 @@
 
 #define ktd2692_NAME "leds-ktd2692"
 
+#define KTD2692_MAX_CURRENT 1500
+#define KTD2692_FLASH_DEFAULT_CURRENT	1200	/* 1.2A */
+#define KTD2692_MOVIE_DEFAULT_CURRENT	175	/* 175mA */
+#define KTD2692_FACTORY_DEFAULT_CURRENT 250	/* 250mA */
+#define KTD2692_TORCH_DEFAULT_CURRENT	75	/* 75mA */
+
+#define TORCH_STEP 10
+
+#define KTD2692_CAL_FLASH_CURRENT(mA, max) (((((((mA)*16)*10)/(max))+5)/10)-1)
+#define KTD2692_CAL_MOVIE_CURRENT(mA, max) ((((((((mA)*16)*3)*10)/(max))+5)/10)-1)
+#define KTD2692_FLASH_CURRENT(mA, max) ((KTD2692_CAL_FLASH_CURRENT((int)mA, max)) > 0) ? (KTD2692_CAL_FLASH_CURRENT(mA, max) & 0x1f) : 0
+#define KTD2692_MOVIE_CURRENT(mA, max) ((KTD2692_CAL_MOVIE_CURRENT((int)mA, max)) > 0) ? (KTD2692_CAL_MOVIE_CURRENT(mA, max) & 0x1f) : 0
+
+#define KTD2692_TORCH_STEP_LEVEL_CURRENT(n,max) (((((max)/16)/3) + 1)*(n))
+
 #define LED_ERROR(x, ...) printk(KERN_ERR "%s : " x, __func__, ##__VA_ARGS__)
 #define LED_INFO(x, ...) printk(KERN_INFO "%s : " x, __func__, ##__VA_ARGS__)
 #define LED_CHECK_ERR_GOTO(x, out, fmt, ...) \
@@ -35,8 +50,6 @@
 			(value) = temp; \
 		} while (0)
 
-#define TORCH_STEP 10
-
 #define KTD2692_ADDR_LVP_SETTING	0x00
 #define KTD2692_ADDR_FLASH_TIMEOUT_SETTING	0x20
 #define KTD2692_ADDR_MIN_CURRENT_SETTING	0x40
@@ -44,13 +57,13 @@
 #define KTD2692_ADDR_FLASH_CURRENT_SETTING	0x80
 #define KTD2692_ADDR_MOVIE_FLASHMODE_CONTROL	0xA0
 
-#define T_H_LB		5			/* us */
-#define T_L_LB		80			/* us*/
-#define T_H_HB		80			/* us */
-#define T_L_HB		5			/* us*/
-#define T_SOD		15			/* us */
-#define T_EOD_L		4			/* us */
-#define T_EOD_H		400			/* us */
+#define T_L_LB		(80)	/* us */
+#define T_H_LB		(5)				/* us*/
+#define T_H_HB		(80)	/* us */
+#define T_L_HB		(5)				/* us*/
+#define T_SOD			(200)			/* us */
+#define T_EOD_L		(25)				/* us */
+#define T_EOD_H		(400)			/* us */
 
 /* LVP_SETTING */
 enum ktd2692_LVPsetting_t {
@@ -128,22 +141,48 @@ enum ktd2692_mode_control_t {
 	KTD2692_DISABLES_MOVIE_FLASH_MODE = 0x00,
 	KTD2692_ENABLE_MOVIE_MODE,
 	KTD2692_ENABLE_FLASH_MODE,
+
+};
+/* TORCH CURRENT INDEX */
+enum ktd2692_torch_current_index_t {
+	KTD2692_TORCH_CURRENT1,
+	KTD2692_TORCH_CURRENT2,
+	KTD2692_TORCH_CURRENT3,
+	KTD2692_TORCH_CURRENT4,
+	KTD2692_TORCH_CURRENT5,
+	KTD2692_TORCH_CURRENT6,
+	KTD2692_TORCH_CURRENT7,
+	KTD2692_TORCH_CURRENT8,
+	KTD2692_TORCH_CURRENT9,
+	KTD2692_TORCH_CURRENT10,
+	KTD2692_TORCH_CURRENT_MAX,
 };
 
 struct ktd2692_platform_data {
 	spinlock_t int_lock;
 	int sysfs_input_data;
 	int flash_control;
+	int torch_table_enable;
 	int torch_table[TORCH_STEP];
-	int torch_current_value;
-	int factory_torch_current_value;
+	bool is_torch_enable;
 	struct workqueue_struct *wqueue;
 	struct work_struct	ktd269_work;
+	u32 max_current;
 	enum ktd2692_LVPsetting_t LVP_Voltage;
 	enum ktd2692_timer_t flash_timeout;
 	enum ktd2692_min_current_t min_current_value;
-	enum ktd2692_movie_current_t movie_current_value;
 	enum ktd2692_flash_current_t flash_current_value;
+	enum ktd2692_movie_current_t movie_current_value;
+	enum ktd2692_movie_current_t factory_current_value;
+	enum ktd2692_movie_current_t torch_current_value;
 	enum ktd2692_mode_control_t mode_status;
 };
+
+struct ktd2692_torch_current_level {
+	u32 index;
+	u32 intensity;
+};
+
+extern int32_t ktd2692_led_mode_ctrl(int state, u32 intensity);
+
 #endif
