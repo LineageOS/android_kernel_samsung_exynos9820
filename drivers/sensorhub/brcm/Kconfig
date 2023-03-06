@@ -714,6 +714,18 @@ config SENSORS_SSP_LUGE
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
 
+config SENSORS_SSP_F62
+        tristate "F62 Project"
+        default n
+        depends on SPI
+        help
+          Binary file for ssp driver.
+          If you say yes here you get F62 project support for
+
+          factory test.
+          To compile this driver as a module, choose M here: the
+          module will be called ssp.
+
 config SSP_MOTOR_CALLBACK
 	tristate "Sensors support motor"
 	default n

@@ -135,6 +135,8 @@ static struct bbd_device bbd;
 static unsigned char bbd_patch_old[] = {
 #if defined(CONFIG_SENSORS_SSP_BEYOND)
 #include "p_os/bbd_patch_file_beyond_old.h"
+#elif defined(CONFIG_SENSORS_SSP_F62)
+#include "r_os/bbd_patch_file_f62.h"
 #else
 #include "p_os/bbd_patch_file_beyond_old.h"
 #endif
@@ -149,6 +151,8 @@ static unsigned char bbd_patch_new_old[] = { // hw_rev 20 ~ hw_rev 23
 #else
 #include "r_os/bbd_patch_file_beyond_new_old.h"
 #endif
+#elif defined(CONFIG_SENSORS_SSP_F62)
+#include "r_os/bbd_patch_file_f62.h"
 #else
 #include "p_os/bbd_patch_file_beyond_new_old.h"
 #endif
@@ -171,6 +175,8 @@ static unsigned char bbd_patch[] = {
 #else
 #include "r_os/bbd_patch_file_davinci.h"
 #endif
+#elif defined(CONFIG_SENSORS_SSP_F62)
+#include "r_os/bbd_patch_file_f62.h"
 #else
 #include "p_os/bbd_patch_file_beyond.h"
 #endif
