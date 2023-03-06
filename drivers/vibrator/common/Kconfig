@@ -1,0 +1,19 @@
+config SEC_VIBRATOR
+	tristate "sec vibrator"
+	default n
+	help
+	  Say Y to enable Samsung's Motor support. This allows control of supported
+	  Motors from both userspace interface by sysfs and provides common Motor
+	  interfaces by registering.
+
+	  If unsure, say N.
+
+config SEC_VIB_NOTIFIER
+	bool "use sec vibrator notifier"
+	default n
+	help
+	  Enable notifier functions to get motor enable status
+	  and timeout value by register notifiy
+
+	  If you unsure, please select n
+

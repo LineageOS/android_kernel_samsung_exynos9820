@@ -239,6 +239,8 @@ source "drivers/fingerprint/Kconfig"
 
 source "drivers/samsung/Kconfig"
 
+source "drivers/vibrator/Kconfig"
+
 source "drivers/spu_verify/Kconfig"
 
 endmenu

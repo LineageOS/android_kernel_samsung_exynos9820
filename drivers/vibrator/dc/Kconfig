@@ -1,0 +1,11 @@
+
+config DC_VIBRATOR
+	tristate "SEC DC Vibrator"
+	default n
+	help
+	  This supports the motor which controlled by regulator or gpio.
+	  The common interfaces are provided by common motor interfaces with samsung vibrator.
+
+	  If unsure, say N.
+
+
