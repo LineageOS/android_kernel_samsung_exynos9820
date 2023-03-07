@@ -116,6 +116,8 @@
  // this packet size related when AP send ssp packet to MCU.
 #define MAX_SSP_PACKET_SIZE	1000
 #define SSP_INSTRUCTION_PACKET  9
+//camera moving filter
+#define CAM_LUX_INITIAL -1
 
 #define SSP_DEBUG_TIME_FLAG_ON		"SSP:DEBUG_TIME=1"
 #define SSP_DEBUG_TIME_FLAG_OFF		"SSP:DEBUG_TIME=0"
@@ -504,6 +506,20 @@ struct sensor_value {
 			s32 quat_d;
 			u8 acc_rot;
 		};
+
+                struct {
+			u32 lux;
+			s32 cct;
+			u32 r;
+			u32 g;
+			u32 b;
+			u32 w;
+			u16 a_gain;
+			u16 a_time;
+			u8 brightness;
+			u8 min_lux_flag;
+		} __attribute__((__packed__)) light_t;
+
 		struct {
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
 			u32 lux;
@@ -1029,6 +1045,14 @@ struct ssp_data {
         bool IsNoRespCnt;
 /* hall ic */
 	bool hall_ic_status; // 0: open 1: close
+/* moving average filter buffer for sABC algorithm */
+#if defined(CONFIG_SENSORS_SABC)
+	int brightness;
+	int last_brightness_level;
+	bool camera_lux_en;
+	int camera_lux;
+	int pre_camera_lux;
+#endif
 };
 
 //#if defined (CONFIG_SENSORS_SSP_VLTE)
@@ -1178,6 +1202,9 @@ void report_step_det_data(struct ssp_data *data, int sensor_type, struct sensor_
 void report_gesture_data(struct ssp_data *data, int sensor_type, struct sensor_value *gesdata);
 void report_pressure_data(struct ssp_data *data, int sensor_type, struct sensor_value *predata);
 void report_light_data(struct ssp_data *data, int sensor_type, struct sensor_value *lightdata);
+#if defined(CONFIG_SENSORS_SABC)
+void report_uncal_light_data(struct ssp_data *data, int sensor_type, struct sensor_value *lightdata);
+#endif
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 void report_light_ir_data(struct ssp_data *data, int sensor_type, struct sensor_value *lightirdata);
 #endif
@@ -1285,4 +1312,7 @@ void set_GyroCalibrationInfoData(char *pchRcvDataFrame, int *iDataIdx);
 int send_vdis_flag(struct ssp_data *data, bool bFlag);
 void initialize_super_vdis_setting(void);
 
+#if defined(CONFIG_SENSORS_SABC)
+void set_light_brightness(struct ssp_data *data);
+#endif
 #endif

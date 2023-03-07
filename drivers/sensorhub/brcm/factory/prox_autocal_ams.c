@@ -1,5 +1,9 @@
 #include "../ssp.h"
 
+#if defined(CONFIG_SENSORS_SSP_STK33917)
+#define VENDOR		"SITRON"
+#define CHIP_ID		"STK33917"
+#else
 #define	VENDOR		"AMS"
 
 #if defined(CONFIG_SENSORS_SSP_TMD4903)
@@ -17,7 +21,7 @@
 #else
 #define CHIP_ID		"UNKNOWN"
 #endif
-
+#endif
 #define PROX_ADC_BITS_NUM		14
 #define THRESHOLD_HIGH			0
 #define THRESHOLD_LOW			1

@@ -14,6 +14,10 @@
  */
 #include "../ssp.h"
 
+#if defined(CONFIG_SENSORS_SSP_STK33917)
+#define VENDOR		"SITRON"
+#define CHIP_ID		"STK33917"
+#else
 #define	VENDOR		"AMS"
 #if defined(CONFIG_SENSORS_SSP_TMG399x)
 #define	CHIP_ID		"TMG399X"
@@ -34,7 +38,7 @@
 #else
 #define CHIP_ID		"UNKNOWN"
 #endif
-
+#endif
 #define CONFIG_PANEL_NOTIFY	1
 /*************************************************************************/
 /* factory Sysfs                                                         */

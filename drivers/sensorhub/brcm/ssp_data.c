@@ -1034,7 +1034,11 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->report_sensor_data[GRIP_SENSOR] = report_grip_data;
 #endif
 	data->report_sensor_data[LIGHT_SENSOR] = report_light_data;
+#if defined(CONFIG_SENSORS_SABC)
+	data->report_sensor_data[UNCAL_LIGHT_SENSOR] = report_uncal_light_data;
+#else
 	data->report_sensor_data[UNCAL_LIGHT_SENSOR] = report_light_data;
+#endif
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 	data->report_sensor_data[LIGHT_IR_SENSOR] = report_light_ir_data;
 #endif

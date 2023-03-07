@@ -109,6 +109,17 @@ config SENSORS_SSP_AK09911
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
 
+config SENSORS_SSP_AK09918
+	tristate "Sensors ssp ak09918c"
+	default n
+	depends on SPI
+	help
+	  ak09918c file for factory test and doeplus in ssp driver.
+	  If you say yes here you get ak09918c support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
 config SENSORS_SSP_YAS532
 	tristate "Sensors ssp yas532"
 	default n
@@ -321,6 +332,17 @@ config SENSORS_SSP_TMD4903
 	help
 	  tmd4903 file for factory test in ssp driver.
           If you say yes here you get tmd4903 support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_STK33917
+	tristate "Sensors ssp stk33917"
+	default n
+	depends on SPI
+	help
+	  stk33917 file for factory test in ssp driver.
+	  If you say yes here you get tmd4903 support for
 	  factory test.
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
@@ -725,6 +747,14 @@ config SENSORS_SSP_F62
           factory test.
           To compile this driver as a module, choose M here: the
           module will be called ssp.
+
+config SENSORS_SABC
+	tristate "F62 Project"
+	default n
+	depends on SPI
+	help
+	  If you have to use sABC alogorithm,
+	  it should be set, it use camera lux.
 
 config SSP_MOTOR_CALLBACK
 	tristate "Sensors support motor"

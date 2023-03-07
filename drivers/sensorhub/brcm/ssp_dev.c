@@ -303,6 +303,9 @@ static void initialize_variable(struct ssp_data *data)
 	data->ois_control = &ois_control;
 	data->ois_reset = &ois_reset;
 
+#if defined(CONFIG_SENSORS_SABC)
+	data->pre_camera_lux = CAM_LUX_INITIAL;
+#endif
 }
 
 int initialize_mcu(struct ssp_data *data)
@@ -382,6 +385,10 @@ int initialize_mcu(struct ssp_data *data)
 #endif
 
 	send_hall_ic_status(data->hall_ic_status);
+
+#if defined(CONFIG_SENSORS_SABC)
+	set_light_brightness(data);
+#endif
 
 /* hoi: il dan mak a */
 #ifndef CONFIG_SENSORS_SSP_BBD
@@ -846,6 +853,33 @@ skip_to_send_cmd:
 	return 0;
 }
 #endif
+
+#if defined(CONFIG_SENSORS_SABC)
+void set_light_brightness(struct ssp_data *data)
+{
+	struct ssp_msg *msg = kzalloc(sizeof(*msg), GFP_KERNEL);
+	int iRet = 0;
+
+	if (msg == NULL) {
+		pr_err("[SSP] %s, failed to allocate memory for ssp_msg\n", __func__);
+		return;
+	}
+	msg->cmd = MSG2SSP_PANEL_INFORMATION;
+	msg->length = sizeof(data->brightness);
+	msg->options = AP2HUB_WRITE;
+	msg->buffer = kzalloc(sizeof(data->brightness), GFP_KERNEL);
+	msg->free_buffer = 1;
+	memcpy(msg->buffer, (u8 *)&data->brightness, sizeof(data->brightness));
+
+	iRet = ssp_spi_async(ssp_data_info, msg);
+
+	if (iRet < 0)
+		pr_err("[SSP] %s, failed to send brightness information", __func__);
+	//else
+		//pr_info("[SSP] %s, %d\n", __func__, data->brightness);
+}
+#endif
+
 
 void ssp_timestamp_sync_work_func(struct work_struct *work)
 {
