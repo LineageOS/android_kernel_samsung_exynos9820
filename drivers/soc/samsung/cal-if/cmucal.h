@@ -645,4 +645,5 @@ extern unsigned int cmucal_get_id_by_addr(unsigned int addr);
 extern void (*cal_data_init)(void);
 extern int (*cal_check_hiu_dvfs_id)(u32 id);
 extern void (*cal_set_cmu_smpl_warn)(void);
+extern void (*fimc_is_mclk_control)(unsigned int enable, unsigned int num);
 #endif

@@ -261,6 +261,7 @@ enum v4l2_is_hal_version {
 #define V4L2_CID_SENSOR_SET_ANALOG_GAIN                 (V4L2_CID_SENSOR_BASE + 18)
 #define V4L2_CID_SENSOR_SET_DIGITAL_GAIN                (V4L2_CID_SENSOR_BASE + 19)
 #define V4L2_CID_SENSOR_SET_LASER_CONTORL               (V4L2_CID_SENSOR_BASE + 20)
+#define V4L2_CID_SENSOR_SET_EXTENDEDMODE                (V4L2_CID_SENSOR_BASE + 21)
 #define V4L2_CID_SENSOR_SET_CAPTURE_INTENT_INFO		(V4L2_CID_SENSOR_BASE + 24)
 
 #define V4L2_CID_SENSOR_DEINIT                          (V4L2_CID_SENSOR_BASE + 90)
@@ -318,6 +319,7 @@ enum v4l2_cis_factory_control_command {
 
 #define V4L2_CID_ACTUATOR_GET_STATUS                    (V4L2_CID_SENSOR_BASE + 200)
 #define V4L2_CID_ACTUATOR_SET_POSITION                  (V4L2_CID_SENSOR_BASE + 201)
+#define V4L2_CID_ACTUATOR_SOFT_LANDING                  (V4L2_CID_SENSOR_BASE + 202)
 
 #define V4L2_CID_FLASH_SET_MODE                         (V4L2_CID_SENSOR_BASE + 300)
 #define V4L2_CID_FLASH_SET_INTENSITY                    (V4L2_CID_SENSOR_BASE + 301)

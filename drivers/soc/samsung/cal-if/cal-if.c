@@ -386,6 +386,12 @@ int cal_asv_get_tablever(void)
 	return asv_get_table_ver();
 }
 
+void cal_fimc_is_mclk_control(unsigned int enable, unsigned int num)
+{
+	if (fimc_is_mclk_control)
+		fimc_is_mclk_control(enable, num);
+}
+
 #ifdef CONFIG_CP_PMUCAL
 int cal_cp_init(void)
 {

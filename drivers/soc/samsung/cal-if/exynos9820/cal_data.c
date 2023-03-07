@@ -43,6 +43,7 @@ void __iomem *cmu_cpucl0;
 void __iomem *cmu_cpucl1;
 void __iomem *cmu_cpucl2;
 void __iomem *cmu_g3d;
+void __iomem *cmu_top;
 
 #define PLL_CON0_PLL_MMC	(0x1a0)
 #define PLL_CON1_PLL_MMC	(0x1a4)
@@ -196,6 +197,34 @@ int cal_pll_mmc_set_ssc(unsigned int mfr, unsigned int mrr, unsigned int ssc_on)
 #define QCH_CON_TREX_D0_BUSC_QCH_OFFSET	(0x31a8)
 #define IGNORE_FORCE_PM_EN		(2)
 
+#define EXYNOS9820_CMU_CMU_BASE		(0x1A240000)
+#define EXYNOS9820_CMU_CLK_INVERSION	(0x860)
+#define CIS_MCLK(x)			(0x2 * x)
+
+void exynos9820_fimc_is_mclk_control(unsigned int enable, unsigned int num)
+{
+	u32 reg;
+
+	reg = __raw_readl(cmu_top + EXYNOS9820_CMU_CLK_INVERSION);
+
+	if (enable) {
+		if (reg & (1 << CIS_MCLK(num))) {
+			pr_warn("CIS_MCLK%x is enabled\n", num);
+		} else {
+			__raw_writel(reg | (1 << CIS_MCLK(num)),
+					cmu_top + EXYNOS9820_CMU_CLK_INVERSION);
+		}
+	} else {
+		if (reg & (1 << CIS_MCLK(num))) {
+			__raw_writel(reg & ~(1 << CIS_MCLK(num)),
+					cmu_top + EXYNOS9820_CMU_CLK_INVERSION);
+		} else {
+			pr_warn("CIS_MCLK%x is disabled\n", num);
+		}
+	}
+}
+
+void (*fimc_is_mclk_control)(unsigned int enable, unsigned int num) = exynos9820_fimc_is_mclk_control;
 
 void exynos9820_cal_data_init(void)
 {
@@ -232,6 +261,10 @@ void exynos9820_cal_data_init(void)
 	cmu_g3d = ioremap(EXYNOS9820_CMU_G3D_BASE, SZ_4K);
 	if (!cmu_g3d)
 		pr_err("%s: cmu_g3d ioremap failed\n", __func__);
+
+	cmu_top = ioremap(EXYNOS9820_CMU_CMU_BASE, SZ_4K);
+	if (!cmu_top)
+		pr_err("%s: cmu_cmu ioremap failed\n", __func__);
 }
 
 void (*cal_data_init)(void) = exynos9820_cal_data_init;

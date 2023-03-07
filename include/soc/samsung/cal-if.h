@@ -107,6 +107,8 @@ extern void cal_cp_disable_dump_pc_no_pg(void);
 extern int cal_init(void);
 extern int cal_if_init(void *);
 
+extern void cal_fimc_is_mclk_control(unsigned int enable, unsigned int num);
+
 /* It is for debugging. */
 #define cal_vclk_dbg_info(a)	do{} while(0);
 //extern void cal_vclk_dbg_info(unsigned int id);
