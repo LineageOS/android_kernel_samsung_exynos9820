@@ -216,6 +216,9 @@ obj-y				+= vibrator/
 # Sensorhub driver
 obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
 
+# grip sensor
+obj-y				+= sensors/
+
 # optics sensor driver
 obj-$(CONFIG_SENSORS_HRMSENSOR)	+= optics/
 obj-$(CONFIG_SENSORS_MAX86915)	+= optics/

@@ -1,0 +1,52 @@
+#
+# grip sensors configuration
+#
+
+config SENSORS_A96T3X6
+	depends on I2C
+	tristate "A96T3X6 driver for grip"
+	default n
+	help
+	  If you say yes here if you use A96T3X6 for grip.
+	  This option enables grip sensors using
+	  Above A96T3X6 device driver for grip.
+
+config SENSORS_A96T3X6_SUB
+	depends on I2C
+	tristate "A96T3X6 driver for grip"
+	default n
+	help
+	  Say Y here if you use A96T3X6 for grip.
+	  This option enables grip sensors using
+	  Above A96T3X6 device driver for grip.
+
+config SENSOR_A96T3X6_LDO_SHARE
+	depends on I2C
+	tristate "SENSOR_A96T3X6_LDO_SHARE driver for grip"
+	default n
+	help
+	  Say Y here if you use SENSOR_A96T3X6_LDO_SHARE for grip.
+	  This option enables grip sensors using
+	  Above SENSOR_A96T3X6_LDO_SHARE device driver for grip.
+
+config SENSORS_A96T3X6_CRC_CHECK
+	bool "check crc check instead of checksum compare"
+	default n
+	help
+	  Say Y here if you use crc check instead of checksum compare
+
+config SENSORS_A96T3X6_F62_FIRMWARE
+	depends on I2C
+	tristate "SENSORS_A96T3X6_F62 driver for grip firmware"
+	default n
+	help
+	  Say Y here if you use F62 model grip firmware.
+
+config SENSORS_ISG5320A
+	depends on I2C
+	tristate "ISG5320A grip"
+	default n
+	help
+	  If you say yes here if you use ISG5320A for grip.
+	  This option enables grip sensors using
+	  IMAGIS ISG5320A device driver for grip.
