@@ -1592,7 +1592,7 @@ static int speaker_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMD:
-		cirrus_bd_store_values("");
+		cirrus_bd_store_values_left();
 		break;
 	}
 
