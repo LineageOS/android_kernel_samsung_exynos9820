@@ -35,7 +35,18 @@ source "drivers/media/platform/blackfin/Kconfig"
 
 source "drivers/media/platform/exynos/Kconfig"
 
+config VIDEO_SAMSUNG_F62
+	bool "Galaxy F62 camera support"
+	depends on SOC_EXYNOS9820
+	help
+	  Include the fimc-is2 driver for Galaxy F62/M62
+
+if !VIDEO_SAMSUNG_F62
 source "drivers/media/platform/exynos/fimc-is2/Kconfig"
+endif
+if VIDEO_SAMSUNG_F62
+source "drivers/media/platform/exynos/fimc-is2-f62/Kconfig"
+endif
 
 config VIDEO_SH_VOU
 	tristate "SuperH VOU video output driver"

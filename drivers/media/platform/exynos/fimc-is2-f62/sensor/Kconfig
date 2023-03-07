@@ -9,7 +9,7 @@ config EXYNOS_CAMERA_MODULE
 	help
 	  Use Modules(F/W)
 
-source "drivers/media/platform/exynos/fimc-is2/sensor/module/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module/Kconfig"
 
 #menu depth2
 menu "CSI Setting"
@@ -20,7 +20,7 @@ config EXYNOS_DEVICE_MIPI_CSIS_LEGACY
 	help
 	  Enable Device MIPI-CSIS S/W Legacy
 
-source "drivers/media/platform/exynos/fimc-is2/sensor/csi/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/csi/Kconfig"
 
 config EXYNOS_DEVICE_MIPI_CSIS_VER2
 	bool "Use Device MIPI-CSIS S/W Version 2"
@@ -43,7 +43,7 @@ config EXYNOS_DEVICE_MIPI_CSIS_VER4
 	help
 	  Enable Device MIPI-CSIS S/W Version 4(Including WDMA and Sensor Group)
 
-source "drivers/media/platform/exynos/fimc-is2/sensor/csi2/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/csi2/Kconfig"
 endmenu
 
 #menu depth2
@@ -54,17 +54,17 @@ config EXYNOS_FIMC_BNS
         help
 	  Enable Device BNS(LITE) S/W
 
-source "drivers/media/platform/exynos/fimc-is2/sensor/flite/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/flite/Kconfig"
 endmenu
 
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/cis/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/actuator/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/flash/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/ois/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/dphy/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/pdp/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/pafstat/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/module_framework/aperture/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/cis/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/actuator/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/flash/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/ois/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/dphy/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/pdp/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/pafstat/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/aperture/Kconfig"
 
 endmenu

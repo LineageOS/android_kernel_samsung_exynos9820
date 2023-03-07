@@ -3076,7 +3076,7 @@ int get_open_close_hint(int* opening, int* closing) {
 	*opening = IS_OPENING_HINT_NONE;
 	*closing = IS_CLOSING_HINT_NONE;
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	if (core) {
 		*opening = core->vender.opening_hint;
 		*closing = core->vender.closing_hint;

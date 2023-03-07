@@ -478,7 +478,7 @@ int sensor_2l4_cis_init(struct v4l2_subdev *subdev)
 	}
 
 	WARN_ON(!cis->cis_data);
-#if !defined(CONFIG_VENDER_MCD)
+#if !defined(CONFIG_F62_VENDER_MCD)
 	memset(cis->cis_data, 0, sizeof(cis_shared_data));
 
 	ret = sensor_cis_check_rev(cis);

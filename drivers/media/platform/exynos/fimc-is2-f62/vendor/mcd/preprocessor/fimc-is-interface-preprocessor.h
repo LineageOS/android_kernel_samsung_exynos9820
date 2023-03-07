@@ -175,12 +175,12 @@ struct fimc_is_preprocessor_interface {
 	struct fimc_is_preprocessor_interface_ops	preproc_itf_ops;
 };
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 typedef int (*preprocessor_func_type)(struct v4l2_subdev *subdev, void *param);
 #endif
 
 struct fimc_is_preprocessor_ops {
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	int (*preprocessor_init)(struct v4l2_subdev *subdev);
 	int (*preprocessor_log_status)(struct v4l2_subdev *subdev);
 #endif
@@ -192,7 +192,7 @@ struct fimc_is_preprocessor_ops {
 	int (*preprocessor_deinit)(struct v4l2_subdev *subdev);
 	int (*preprocessor_s_format)(struct v4l2_subdev *subdev, struct fimc_is_device_sensor *device);
 	int (*preprocessor_set_le_mode)(struct v4l2_subdev *subdev, void *param);
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	/*int (*preprocessor_set_size)(struct v4l2_subdev *subdev, preprocessor_shared_data *preprocessor_data);*/
 	preprocessor_func_type preprocessor_set_af;
 	preprocessor_func_type preprocessor_enable_block;

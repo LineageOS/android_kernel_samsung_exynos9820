@@ -1,4 +1,4 @@
-config FIMC_IS_V5_15_0
+config F62_FIMC_IS_V5_15_0
 	bool "Use fimc-is v5.15.0"
 	depends on SOC_EXYNOS7872
 	select EXYNOS_DEVICE_MIPI_CSIS_VER2 if !USE_SENSOR_GROUP

@@ -15,9 +15,9 @@
 #include "fimc-is-metadata.h"
 #include "fimc-is-param.h"
 #include "fimc-is-config.h"
-#if defined(CONFIG_FIMC_IS_V4_0_0)
+#if defined(CONFIG_F62_FIMC_IS_V4_0_0)
 #include "fimc-is-lib-vra_v1_1.h"
-#elif defined(CONFIG_FIMC_IS_V7_0_0) || defined(CONFIG_FIMC_IS_V6_0_0) || defined(CONFIG_FIMC_IS_V6_10_0)
+#elif defined(CONFIG_F62_FIMC_IS_V7_0_0) || defined(CONFIG_F62_FIMC_IS_V6_0_0) || defined(CONFIG_F62_FIMC_IS_V6_10_0)
 #include "fimc-is-lib-vra_v1_4.h"
 #else
 #include "fimc-is-lib-vra_v1_10.h"

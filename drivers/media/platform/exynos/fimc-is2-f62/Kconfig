@@ -8,14 +8,14 @@ config VIDEO_EXYNOS_FIMC_IS2
 	help
 	  This is a v4l2 driver for exynos FIMC-IS device.
 
-source "drivers/media/platform/exynos/fimc-is2/ischain/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/sensor/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/ischain/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/sensor/Kconfig"
 
 #menu depth1
 menu "Base Feature Setting"
 	depends on EXYNOS_FIMC_IS
 
-source "drivers/media/platform/exynos/fimc-is2/hardware/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/hardware/Kconfig"
 endmenu
 
-source "drivers/media/platform/exynos/fimc-is2/vendor/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/vendor/Kconfig"

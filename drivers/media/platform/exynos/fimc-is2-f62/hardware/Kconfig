@@ -42,7 +42,7 @@ config CAMERA_TDNR_VER2_USE
         help
           use tdnr version 2(has compressor)
 
-source "drivers/media/platform/exynos/fimc-is2/hardware/api/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/hardware/api/Kconfig"
 endmenu
 
 config USE_HW_API_COMMON

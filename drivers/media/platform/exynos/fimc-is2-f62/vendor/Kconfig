@@ -4,18 +4,18 @@ menu "Vendor Feature Setting"
 choice
 	prompt "Use vender features"
 	depends on EXYNOS_FIMC_IS
-	default VENDER_DEFAULT
+	default F62_VENDER_DEFAULT
 	help
 	  Use the vender specific features.
 
-config VENDER_DEFAULT
+config F62_VENDER_DEFAULT
         bool "Default"
-config VENDER_MCD
+config F62_VENDER_MCD
         bool "MCD"
-config VENDER_PSV
+config F62_VENDER_PSV
         bool "PSV"
 endchoice
 
-source "drivers/media/platform/exynos/fimc-is2/vendor/default/Kconfig"
-source "drivers/media/platform/exynos/fimc-is2/vendor/mcd/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/vendor/default/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2-f62/vendor/mcd/Kconfig"
 endmenu

@@ -2318,7 +2318,7 @@ int cis_gc5035_probe(struct i2c_client *client,
 	struct device_node *dnode;
 	u32 sensor_id = 0;
 
-#if defined(CONFIG_VENDER_MCD) || defined(CONFIG_CAMERA_OTPROM_SUPPORT_FRONT) || defined(CONFIG_CAMERA_OTPROM_SUPPORT_REAR)
+#if defined(CONFIG_F62_VENDER_MCD) || defined(CONFIG_CAMERA_OTPROM_SUPPORT_FRONT) || defined(CONFIG_CAMERA_OTPROM_SUPPORT_REAR)
 	struct fimc_is_vender_specific *specific = NULL;
 	u32 rom_id = 0;
 #endif
@@ -2372,7 +2372,7 @@ int cis_gc5035_probe(struct i2c_client *client,
 	cis->client = client;
 	sensor_peri->module->client = cis->client;
 
-#if defined(CONFIG_VENDER_MCD)
+#if defined(CONFIG_F62_VENDER_MCD)
 	if (of_property_read_bool(dnode, "use_sensor_otp")) {
 		ret = of_property_read_u32(dnode, "rom_id", &rom_id);
 		if (ret) {

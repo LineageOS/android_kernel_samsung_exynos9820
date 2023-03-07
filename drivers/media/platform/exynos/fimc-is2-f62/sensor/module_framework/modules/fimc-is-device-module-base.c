@@ -198,7 +198,7 @@ int sensor_module_init(struct v4l2_subdev *subdev, u32 val)
 		}
 	}
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	ret = CALL_CISOPS(&sensor_peri->cis, cis_check_rev_on_init, subdev_cis);
 	if (ret < 0) {
 		device = (struct fimc_is_device_sensor *)v4l2_get_subdev_hostdata(subdev_cis);
@@ -905,7 +905,7 @@ int sensor_module_s_ext_ctrls(struct v4l2_subdev *subdev, struct v4l2_ext_contro
 
 		case V4L2_CID_IS_GET_DUAL_CAL:
 		{
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 			char *dual_cal = NULL;
 			int cal_size = 0;
 

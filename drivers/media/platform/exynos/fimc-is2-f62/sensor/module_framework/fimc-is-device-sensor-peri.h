@@ -289,7 +289,7 @@ struct fimc_is_preprocessor {
 	struct fimc_is_preproc_cfg	*cfg;
 
 	struct fimc_is_preprocessor_ops	*preprocessor_ops;
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	void				*private_data;
 #endif
 	struct spi_device		*spi;

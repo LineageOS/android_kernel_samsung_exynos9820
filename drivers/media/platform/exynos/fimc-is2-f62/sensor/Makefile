@@ -17,10 +17,10 @@ obj-$(CONFIG_USE_DIRECT_IS_CONTROL) += module_framework/ \
 
 obj-$(CONFIG_CAMERA_FPGA_DPHY) += module_framework/dphy/
 
-ifneq ($(CONFIG_VENDER_MCD),y)
+ifneq ($(CONFIG_F62_VENDER_MCD),y)
 obj-y += module_framework/ois/
 endif
 
-EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2
-EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2/include
-EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2/vendor
+EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2-f62
+EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2-f62/include
+EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2-f62/vendor

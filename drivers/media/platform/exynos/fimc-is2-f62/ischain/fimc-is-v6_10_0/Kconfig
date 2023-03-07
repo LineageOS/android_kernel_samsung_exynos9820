@@ -1,4 +1,4 @@
-config FIMC_IS_V6_10_0
+config F62_FIMC_IS_V6_10_0
 	bool "Use fimc-is v6.10.0"
 	depends on SOC_EXYNOS9610
 	select EXYNOS_DEVICE_MIPI_CSIS_VER4

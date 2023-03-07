@@ -1,4 +1,4 @@
-obj-$(CONFIG_VENDER_MCD) := fimc-is-vender.o \
+obj-$(CONFIG_F62_VENDER_MCD) := fimc-is-vender.o \
 				fimc-is-vender-caminfo.o \
 				fimc-is-sec-define.o \
 				crc32.o \
@@ -21,11 +21,11 @@ obj-$(CONFIG_CAMERA_CIS_IMX316_BUCK_USE) += fimc-is-isl91128.o
 
 obj-$(CONFIG_USE_DIRECT_IS_CONTROL) += preprocessor/
 
-ccflags-y := -Idrivers/media/platform/exynos/fimc-is2
-ccflags-y += -Idrivers/media/platform/exynos/fimc-is2/include
-ccflags-y += -Idrivers/media/platform/exynos/fimc-is2/sensor/module_framework
-ccflags-y += -Idrivers/media/platform/exynos/fimc-is2/sensor/module_framework/iris
+ccflags-y := -Idrivers/media/platform/exynos/fimc-is2-f62
+ccflags-y += -Idrivers/media/platform/exynos/fimc-is2-f62/include
+ccflags-y += -Idrivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework
+ccflags-y += -Idrivers/media/platform/exynos/fimc-is2-f62/sensor/module_framework/iris
 
 ifeq ($(CONFIG_COMPANION_DIRECT_USE),y)
-EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2/vendor/mcd/preprocessor
+EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2-f62/vendor/mcd/preprocessor
 endif

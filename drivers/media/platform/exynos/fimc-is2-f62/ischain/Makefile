@@ -12,4 +12,4 @@ obj-$(CONFIG_EXYNOS_FIMC_IS) += fimc-is-v6_0_0/
 obj-$(CONFIG_EXYNOS_FIMC_IS) += fimc-is-v6_10_0/
 obj-$(CONFIG_EXYNOS_FIMC_IS) += fimc-is-v7_0_0/
 
-EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2/include
+EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2-f62/include

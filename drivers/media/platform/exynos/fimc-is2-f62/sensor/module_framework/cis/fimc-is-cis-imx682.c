@@ -316,7 +316,7 @@ int sensor_imx682_cis_LRC_write(struct v4l2_subdev *subdev)
 	ulong cal_addr;
 	u8 cal_data[SENSOR_IMX682_LRC_CAL_SIZE] = {0, };
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	char *rom_cal_buf = NULL;
 #else
 	struct fimc_is_lib_support *lib = &gPtr_lib_support;
@@ -339,7 +339,7 @@ int sensor_imx682_cis_LRC_write(struct v4l2_subdev *subdev)
 
 	position = sensor_peri->module->position;
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	ret = fimc_is_sec_get_cal_buf(&rom_cal_buf, position);
 
 	if (ret < 0) {
@@ -411,7 +411,7 @@ int sensor_imx682_cis_QuadSensCal_write(struct v4l2_subdev *subdev)
 	ulong cal_addr;
 	u8 cal_data[SENSOR_IMX682_QUAD_SENS_CAL_SIZE] = {0, };
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	char *rom_cal_buf = NULL;
 #else
 	struct fimc_is_lib_support *lib = &gPtr_lib_support;
@@ -434,7 +434,7 @@ int sensor_imx682_cis_QuadSensCal_write(struct v4l2_subdev *subdev)
 
 	position = sensor_peri->module->position;
 
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	ret = fimc_is_sec_get_cal_buf(&rom_cal_buf, position);
 	if (ret < 0) {
 		goto p_err;

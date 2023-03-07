@@ -96,4 +96,8 @@ obj-y					+= meson/
 
 obj-$(CONFIG_VIDEO_EXYNOS_SMFC)		+= exynos/smfc/
 obj-$(CONFIG_VIDEO_EXYNOS_SCALER)	+= exynos/scaler/
+ifneq ($(CONFIG_VIDEO_SAMSUNG_F62), y)
 obj-$(CONFIG_VIDEO_EXYNOS_FIMC_IS2)     += exynos/fimc-is2/
+else
+obj-$(CONFIG_VIDEO_EXYNOS_FIMC_IS2)     += exynos/fimc-is2-f62/
+endif

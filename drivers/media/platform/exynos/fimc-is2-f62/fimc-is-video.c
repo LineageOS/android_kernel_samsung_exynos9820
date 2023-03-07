@@ -2093,7 +2093,7 @@ int fimc_is_video_s_ctrl(struct file *file,
 			break;
 		}
 		break;
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 	case V4L2_CID_IS_OPENING_HINT:
 	{
 		struct fimc_is_core *core;

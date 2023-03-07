@@ -1916,7 +1916,7 @@ int fimc_is_sensor_peri_s_stream(struct fimc_is_device_sensor *device,
 			ret = CALL_CISOPS(cis, cis_wait_streamon, subdev_cis);
 			if (ret < 0) {
 				err("[%s]: sensor wait stream on fail\n", __func__);
-#ifdef CONFIG_VENDER_MCD
+#ifdef CONFIG_F62_VENDER_MCD
 				CALL_CISOPS(cis, cis_log_status, subdev_cis);
 				fimc_is_sensor_gpio_dbg(device);
 				if (cis->cis_ops->cis_recover_stream_on) {
