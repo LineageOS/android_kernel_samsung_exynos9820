@@ -41,6 +41,8 @@
 #include <linux/ccic/max77705_pass4.h>
 #if defined(CONFIG_MAX77705_FW_PID03_SUPPORT)
 #include <linux/ccic/max77705C_pass2_PID03.h>
+#elif defined(CONFIG_MAX77705_FW_PID07_SUPPORT)
+#include <linux/ccic/max77705C_pass2_PID07.h>
 #else
 #include <linux/ccic/max77705C_pass2.h>
 #endif

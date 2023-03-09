@@ -68,10 +68,19 @@ config MAX77705_FW_PID03_SUPPORT
 	  If you say yes here you will get support for
 	  specified firmware with max77705 ccic chipset
 
+config MAX77705_FW_PID07_SUPPORT
+	bool "support MAX77705 FW PID 0x07"
+	depends on CCIC_MAX77705
+	default n
+	help
+	  If you say yes here you will get support for
+	  specified firmware with max77705 ccic chipset
+
 config MAX77705_GRL_ENABLE
 	bool "support Eye Diagram"
 	depends on CCIC_MAX77705
 	depends on !MAX77705_FW_PID03_SUPPORT
+	depends on !MAX77705_FW_PID07_SUPPORT
 	default y
 	help
 	  If you say yes here you will get support for Eye Diagram
