@@ -3194,31 +3194,6 @@ static int decon_set_color_mode(struct decon_device *decon,
 	return ret;
 }
 
-/* Android O version does not support non translation */
-#if !defined(CONFIG_ANDROID_SYSTEM_AS_ROOT)
-static void decon_translate_idma2ch(struct decon_device *decon,
-		struct decon_win_config_data *win_data)
-{
-	int i;
-	struct decon_win_config *config;
-	struct decon_win_config *win_config = win_data->config;
-
-	for (i = 0; i < decon->dt.max_win; i++) {
-		config = &win_config[i];
-
-		switch (config->state) {
-		case DECON_WIN_STATE_COLOR:
-		case DECON_WIN_STATE_BUFFER:
-		case DECON_WIN_STATE_CURSOR:
-			config->idma_type = DPU_DMA2CH(config->idma_type);
-			break;
-		default:
-			break;
-		}
-	}
-}
-#endif
-
 static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -3284,17 +3259,6 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 			break;
 		}
 
-/* Android O version does not support non translation */
-#if !defined(CONFIG_ANDROID_SYSTEM_AS_ROOT)
-		/*
-		 * idma_type is translated to DPP channel number temporarily.
-		 * In the future, user side will use DPP channel number instead
-		 * of idma_type.
-		 * If use side uses DPP channel number for S3CFB_WIN_CONFIG parameter,
-		 * this function will be removed.
-		 */
-		decon_translate_idma2ch(decon, &win_data);
-#endif
 		ret = decon_set_win_config(decon, &win_data);
 		if (ret)
 			break;
