@@ -4207,7 +4207,6 @@ static int pca9468_charger_parse_dt(struct device *dev, struct pca9468_platform_
 	if (pdata->chgen_gpio < 0) {
 		pr_err("%s : cannot get chgen gpio : %d\n",
 			__func__, pdata->chgen_gpio);
-		return -ENODATA;	
 	} else {
 		pr_info("%s: chgen gpio : %d\n", __func__, pdata->chgen_gpio);
 	}
@@ -4466,14 +4465,15 @@ static int pca9468_charger_probe(struct i2c_client *client,
 	}
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
-	ret = gpio_request(pdata->chgen_gpio, "DC_CPEN");
-	if (ret) {
-		pr_info("%s : Request GPIO %d failed\n",
-				__func__, (int)pdata->chgen_gpio);
+	if (pdata->chgen_gpio >= 0) {
+		ret = gpio_request(pdata->chgen_gpio, "DC_CPEN");
+		if (ret) {
+			pr_info("%s : Request GPIO %d failed\n",
+					__func__, (int)pdata->chgen_gpio);
+		}
+		gpio_direction_output(pdata->chgen_gpio,
+				false);
 	}
-
-	gpio_direction_output(pdata->chgen_gpio,
-			false);
 #endif
 
 	ret = pca9468_create_debugfs_entries(pca9468_chg);
