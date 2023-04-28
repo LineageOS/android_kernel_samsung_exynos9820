@@ -970,6 +970,7 @@ struct sec_ts_plat_data {
 	bool sync_reportrate_120;
 	bool support_open_short_test;
 	bool support_mis_calibration_test;
+	bool override_use_sponge;
 };
 
 typedef struct {

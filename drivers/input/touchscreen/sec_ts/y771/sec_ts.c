@@ -1864,6 +1864,7 @@ static int sec_ts_parse_dt(struct i2c_client *client)
 	pdata->enable_settings_aot = of_property_read_bool(np, "enable_settings_aot");
 	pdata->sync_reportrate_120 = of_property_read_bool(np, "sync-reportrate-120");
 	pdata->support_ear_detect = of_property_read_bool(np, "support_ear_detect_mode");
+	pdata->override_use_sponge = of_property_read_bool(np, "override_use_sponge");
 
 	if (of_property_read_u32_array(np, "sec,area-size", px_zone, 3)) {
 		input_info(true, &client->dev, "Failed to get zone's size\n");
@@ -2030,6 +2031,11 @@ int sec_ts_check_custom_library(struct sec_ts_data *ts)
 {
 	u8 data[10] = { 0 };
 	int ret = -1;
+
+	if (ts->plat_data->override_use_sponge) {
+		ts->use_sponge = true;
+		return 0;
+	}
 
 	ret = ts->sec_ts_i2c_read(ts, SEC_TS_CMD_SPONGE_GET_INFO, &data[0], 10);
 

@@ -858,6 +858,7 @@ struct sec_ts_plat_data {
 	bool support_fod;
 	bool enable_settings_aot;
 	bool sync_reportrate_120;
+	bool override_use_sponge;
 };
 
 typedef struct {

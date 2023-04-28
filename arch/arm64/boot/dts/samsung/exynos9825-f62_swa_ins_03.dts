@@ -3166,13 +3166,13 @@
 
 			touchscreen@48 {
 				status = "ok";
-				compatible = "slsi,slsi_ts";
+				compatible = "sec,sec_ts";
 				reg = <0x48>;
 				pinctrl-names = "on_state", "off_state";
 				pinctrl-0 = <0x1e>;
 				pinctrl-1 = <0x1f>;
-				tsp_io_ldo-supply = "tsp_io_ldo";
-				tsp_avdd_ldo-supply = "tsp_avdd_ldo";
+				sec,regulator_dvdd = "tsp_io_ldo";
+				sec,regulator_avdd = "tsp_avdd_ldo";
 				sec,irq_gpio = <0xffffffff 0x0 0x0>;
 				sec,regulator_boot_on;
 				sec,tclm_level = <0x2>;
@@ -3185,8 +3185,9 @@
 				support_mis_calibration_test;
 				support_ear_detect_mode;
 				support_open_short_test;
+				override_use_sponge;
 				sec,project_name = "F62", "E625";
-				sec,firmware_name = "tsp_slsi/y771_f62.bin";
+				sec,firmware_name = "tsp_sec/y771_f62.bin";
 				linux,phandle = <0x92>;
 				phandle = <0x92>;
 			};

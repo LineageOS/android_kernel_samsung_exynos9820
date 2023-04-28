@@ -14,12 +14,12 @@ fw-external-y := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE))
 
 fw-external-$(CONFIG_EXYNOS9810_ACPM) += exynos9810_acpm_tmu.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SEC_TS_Y771) += tsp_sec/y761_beyond0_phole.bin tsp_sec/y771_beyond1_phole.bin \
-						tsp_sec/y771_beyond2_phole.bin tsp_sec/y771_beyondx_phole.bin
+						tsp_sec/y771_beyond2_phole.bin tsp_sec/y771_beyondx_phole.bin \
+						tsp_sec/y771_f62.bin
 
 fw-shipped-$(CONFIG_TOUCHSCREEN_SEC_TS_Y771_D) += tsp_sec/y771_d1.bin tsp_sec/y771_d2.bin \
 						tsp_sec/y771_d1_bringup.bin tsp_sec/y771_davinci_bringup.bin tsp_sec/y771_davinci_bringup2nd.bin
 
-fw-external-$(CONFIG_TOUCHSCREEN_SLSI) += tsp_slsi/y771_f62.bin
 fw-external-$(CONFIG_SENSORS_A96T3X6_F62_FIRMWARE) += abov/a96t356_f62_main.bin abov/a96t356_f62_sub.bin
 
 fw-shipped-$(CONFIG_EPEN_WACOM_W9020) += epen/w9020_d2.fw epen/w9020_d1.fw epen/w9020_d1_bringup.fw
