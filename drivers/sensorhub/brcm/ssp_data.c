@@ -239,9 +239,22 @@ static void get_step_det_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	*iDataIdx += 1;
 }
 
+#ifdef CONFIG_SENSORS_SSP_F62
+static void get_uncal_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 29);
+	*iDataIdx += 29;
+}
+#endif
+
 static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#ifdef CONFIG_SENSORS_SSP_F62
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 30);
+	*iDataIdx += 30;
+#else
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_ATIME_2BYTE
@@ -264,18 +277,24 @@ static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
 	*iDataIdx += 10;
 #endif
+#endif
 }
 
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 static void get_light_ir_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#ifdef CONFIG_SENSORS_SSP_F62
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 23);
+	*iDataIdx += 23;
+#else
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 13);
 	*iDataIdx += 13;
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
 	*iDataIdx += 12;
+#endif
 #endif
 }
 #endif
@@ -289,6 +308,10 @@ static void get_light_flicker_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_light_cct_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#ifdef CONFIG_SENSORS_SSP_F62
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 35);
+	*iDataIdx += 35;
+#else
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
 #ifdef CONFIG_SENSORS_SSP_LIGHT_LUX_RAW
@@ -306,6 +329,7 @@ static void get_light_cct_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
 	*iDataIdx += 10;
+#endif
 #endif
 }
 static void get_pressure_sensordata(char *pchRcvDataFrame, int *iDataIdx,
@@ -459,8 +483,13 @@ static void get_ucal_accel_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_pocket_mode_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#ifdef CONFIG_SENSORS_SSP_F62
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 62);
+	*iDataIdx += 62;
+#else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 26);
 	*iDataIdx += 26;
+#endif
 }
 static void get_led_cover_event_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
@@ -980,7 +1009,11 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[GRIP_SENSOR] = get_grip_sensordata;
 #endif
 	data->get_sensor_data[LIGHT_SENSOR] = get_light_sensordata;
+#ifdef CONFIG_SENSORS_SSP_F62
+	data->get_sensor_data[UNCAL_LIGHT_SENSOR] = get_uncal_light_sensordata;
+#else
 	data->get_sensor_data[UNCAL_LIGHT_SENSOR] = get_light_sensordata;
+#endif
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 	data->get_sensor_data[LIGHT_IR_SENSOR] = get_light_ir_sensordata;
 #endif
