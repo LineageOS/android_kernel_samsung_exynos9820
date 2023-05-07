@@ -96,6 +96,9 @@ s32 SettingVDIS_Support(struct ssp_data *data, int64_t *dNewDelay)
 	return dMsDelay;
 }
 
+#ifdef CONFIG_SENSORS_SSP_F62
+extern void dpu_set_decon0_off_state_proximity(bool on);
+#endif
 static void enable_sensor(struct ssp_data *data,
 	int iSensorType, int64_t dNewDelay)
 {
@@ -130,6 +133,10 @@ static void enable_sensor(struct ssp_data *data,
 			proximity_open_calibration(data);
 #endif
 			set_proximity_threshold(data);
+
+#ifdef CONFIG_SENSORS_SSP_F62
+			dpu_set_decon0_off_state_proximity(true);
+#endif
 		}
 
 		if (iSensorType == PROXIMITY_ALERT_SENSOR)
@@ -303,6 +310,12 @@ static int ssp_remove_sensor(struct ssp_data *data,
 				uChangedSensor, uBuf, 4);
 		}
 	data->aiCheckStatus[uChangedSensor] = NO_SENSOR_STATE;
+
+#ifdef CONFIG_SENSORS_SSP_F62
+	if (uChangedSensor == PROXIMITY_SENSOR) {
+		dpu_set_decon0_off_state_proximity(false);
+	}
+#endif
 
 	return 0;
 }

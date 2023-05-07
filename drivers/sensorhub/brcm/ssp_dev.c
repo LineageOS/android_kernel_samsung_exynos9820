@@ -1311,6 +1311,12 @@ int get_patch_version(int ap_type, int hw_rev)
 
 }
 
+#ifdef CONFIG_SENSORS_SSP_F62
+bool ssp_proximity_enabled(void) {
+	return ssp_data_info && atomic64_read(&ssp_data_info->aSensorEnable) & (1 << PROXIMITY_SENSOR)
+			&& ssp_data_info->aiCheckStatus[PROXIMITY_SENSOR] != NO_SENSOR_STATE;
+}
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void ssp_early_suspend(struct early_suspend *handler)
