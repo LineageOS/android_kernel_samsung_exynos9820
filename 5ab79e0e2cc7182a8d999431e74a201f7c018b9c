@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06d904ca_3a7253ff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25925
+      },
+      "writtenOn": "2023-06-21T05:12:24Z",
+      "side": 1,
+      "message": "As unlikely as it sounds this seems to fix the kernel panics when connecting an external display via USB-C?",
+      "revId": "5ab79e0e2cc7182a8d999431e74a201f7c018b9c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
