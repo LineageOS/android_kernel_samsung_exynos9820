@@ -985,9 +985,6 @@ out:
 	if (block_cnt == -EPROTO)
 		edid_misc = FB_MISC_HDMI;
 
-	if (!hdev->do_unit_test && !edid_test)
-		kfree(edid);
-
 	return block_cnt;
 }
 
