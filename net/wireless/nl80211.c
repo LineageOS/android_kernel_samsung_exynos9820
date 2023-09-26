@@ -13930,7 +13930,7 @@ void nl80211_send_roamed(struct cfg80211_registered_device *rdev,
 }
 
 void nl80211_send_port_authorized(struct cfg80211_registered_device *rdev,
-				  struct net_device *netdev, const u8 *bssid)
+				  struct net_device *netdev, const u8 *peer_addr)
 {
 	struct sk_buff *msg;
 	void *hdr;
@@ -13945,7 +13945,9 @@ void nl80211_send_port_authorized(struct cfg80211_registered_device *rdev,
 		return;
 	}
 
-	if (nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, bssid))
+	if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
+	    nla_put_u32(msg, NL80211_ATTR_IFINDEX, netdev->ifindex) ||
+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, peer_addr))
 		goto nla_put_failure;
 
 	genlmsg_end(msg, hdr);
