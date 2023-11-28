@@ -40,6 +40,39 @@
 
 static struct device_attribute power_supply_attrs[];
 
+static const char * const power_supply_type_text[] = {
+	"Unknown", "Battery", "UPS", "Mains", "USB",
+	"USB_DCP", "USB_CDP", "USB_ACA", "USB_C",
+	"USB_PD", "USB_PD_DRP", "BrickID"
+};
+
+static const char * const power_supply_status_text[] = {
+	"Unknown", "Charging", "Discharging", "Not charging", "Full"
+};
+
+static const char * const power_supply_charge_type_text[] = {
+	"Unknown", "N/A", "Trickle", "Fast"
+};
+
+static const char * const power_supply_health_text[] = {
+	"Unknown", "Good", "Overheat", "Dead", "Over voltage",
+	"Unspecified failure", "Cold", "Watchdog timer expire",
+	"Safety timer expire", "Over current", "Warm", "Cool", "Hot"
+};
+
+static const char * const power_supply_technology_text[] = {
+	"Unknown", "NiMH", "Li-ion", "Li-poly", "LiFe", "NiCd",
+	"LiMn"
+};
+
+static const char * const power_supply_capacity_level_text[] = {
+	"Unknown", "Critical", "Low", "Normal", "High", "Full"
+};
+
+static const char * const power_supply_scope_text[] = {
+	"Unknown", "System", "Device"
+};
+
 static ssize_t power_supply_show_property(struct device *dev,
 					  struct device_attribute *attr,
 					  char *buf) {

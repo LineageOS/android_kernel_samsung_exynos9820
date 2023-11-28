@@ -200,7 +200,7 @@ extern unsigned int frt_disable_cpufreq;
  *    implementation especially for the computation of the per-CPU boost
  *    value
  */
-#define BOOSTGROUPS_COUNT 5
+#define BOOSTGROUPS_COUNT 6
 
 struct boost_groups {
 	/* Maximum boost value for all RUNNABLE tasks on a CPU */

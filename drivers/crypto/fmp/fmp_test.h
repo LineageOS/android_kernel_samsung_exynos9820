@@ -26,4 +26,5 @@ int fmp_test_crypt(struct exynos_fmp *fmp, struct fmp_test_data *fdata,
 		uint8_t *src, uint8_t *dst, uint32_t len, uint32_t enc,
 		void *priv, struct fmp_crypto_info *ci);
 void fmp_test_exit(struct fmp_test_data *fdata);
+void fmp_set_bh_compl_handler(struct buffer_head *bh);
 #endif /* _FMP_TEST_H_ */

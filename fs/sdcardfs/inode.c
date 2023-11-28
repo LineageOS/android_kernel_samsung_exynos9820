@@ -87,6 +87,9 @@ static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
 	lower_dentry_mnt = lower_path.mnt;
 	lower_parent_dentry = lock_parent(lower_dentry);
 
+	if (d_is_positive(lower_dentry))
+		return -EEXIST;
+
 	/* set last 16bytes of mode field to 0664 */
 	mode = (mode & S_IFMT) | 00664;
 
@@ -559,14 +562,11 @@ static int sdcardfs_permission(struct vfsmount *mnt, struct inode *inode, int ma
 	struct inode tmp;
 	struct sdcardfs_inode_data *top = top_data_get(SDCARDFS_I(inode));
 
+	if (IS_ERR(mnt))
+		return PTR_ERR(mnt);
+
 	if (!top)
 		return -EINVAL;
-
-	/* don't allow extended attribute */
-	if (IS_ERR(mnt)) {
-		data_put(top);
-		return PTR_ERR(mnt);
-	}
 
 	/*
 	 * Permission check on sdcardfs inode.

@@ -17,8 +17,8 @@
 #include "sha256.h"
 
 struct hmac_sha256_ctx {
-	struct shash_desc inner_ctx;
-	struct shash_desc outer_ctx;
+	struct fmp_shash_desc inner_ctx;
+	struct fmp_shash_desc outer_ctx;
 };
 
 typedef struct hmac_sha256_ctx HMAC_SHA256_CTX;

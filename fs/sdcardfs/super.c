@@ -78,11 +78,6 @@ static int sdcardfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	err = vfs_statfs(&lower_path, buf);
 	sdcardfs_put_lower_path(dentry, &lower_path);
 
-	if (uid_eq(GLOBAL_ROOT_UID, current_fsuid()) ||
-			capable(CAP_SYS_RESOURCE) ||
-			in_group_p(AID_USE_ROOT_RESERVED))
-		goto out;
-
 	if (sbi->options.reserved_mb) {
 		/* Invalid statfs informations. */
 		if (buf->f_bsize == 0) {
@@ -101,7 +96,7 @@ static int sdcardfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 		/* Make reserved blocks invisiable to media storage */
 		buf->f_bfree = buf->f_bavail;
 	}
-out:
+
 	/* set return buf to our f/s to avoid confusing user-level utils */
 	buf->f_type = SDCARDFS_SUPER_MAGIC;
 
@@ -149,7 +144,7 @@ static int sdcardfs_remount_fs2(struct vfsmount *mnt, struct super_block *sb,
 		pr_err("sdcardfs: remount flags 0x%x unsupported\n", *flags);
 		err = -EINVAL;
 	}
-	pr_info("Remount options were %s\n", options);
+	pr_info("Remount options were %s for vfsmnt %p.\n", options, mnt);
 	err = parse_options_remount(sb, options, *flags & ~MS_SILENT, mnt->data);
 
 
@@ -318,9 +313,28 @@ static int sdcardfs_show_options(struct vfsmount *mnt, struct seq_file *m,
 		seq_printf(m, ",reserved=%uMB", opts->reserved_mb);
 	if (opts->nocache)
 		seq_printf(m, ",nocache");
+	if (opts->unshared_obb)
+		seq_printf(m, ",unshared_obb");
 
 	return 0;
 };
+
+int sdcardfs_on_fscrypt_key_removed(struct notifier_block *nb,
+				    unsigned long action, void *data)
+{
+	struct sdcardfs_sb_info *sbi = container_of(nb, struct sdcardfs_sb_info,
+						    fscrypt_nb);
+
+	/*
+	 * Evict any unused sdcardfs dentries (and hence any unused sdcardfs
+	 * inodes, since sdcardfs doesn't cache unpinned inodes by themselves)
+	 * so that the lower filesystem's encrypted inodes can be evicted.
+	 * This is needed to make the FS_IOC_REMOVE_ENCRYPTION_KEY ioctl
+	 * properly "lock" the files underneath the sdcardfs mount.
+	 */
+	shrink_dcache_sb(sbi->sb);
+	return NOTIFY_OK;
+}
 
 const struct super_operations sdcardfs_sops = {
 	.put_super	= sdcardfs_put_super,

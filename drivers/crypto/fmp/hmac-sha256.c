@@ -34,7 +34,7 @@ int hmac_sha256_init(struct hmac_sha256_ctx *ctx, const u8 *key, unsigned int ke
 	// long keys are hashed
 	if (key_len > block_size) {
 
-		if (sha256(key, key_len, key_buf))
+		if (fmp_sha256(key, key_len, key_buf))
 			goto err;
 
 		key_buf_len = digest_size;
@@ -54,17 +54,17 @@ int hmac_sha256_init(struct hmac_sha256_ctx *ctx, const u8 *key, unsigned int ke
 	}
 
 	// inner hash context preparation
-	if (sha256_init(&ctx->inner_ctx))
+	if (fmp_sha256_init(&ctx->inner_ctx))
 		goto err;
 
-	if (sha256_update(&ctx->inner_ctx, inner_pad, sizeof(inner_pad)))
+	if (fmp_sha256_update(&ctx->inner_ctx, inner_pad, sizeof(inner_pad)))
 		goto err;
 
 	// outer hash context preparation
-	if (sha256_init(&ctx->outer_ctx))
+	if (fmp_sha256_init(&ctx->outer_ctx))
 		goto err;
 
-	if (sha256_update(&ctx->outer_ctx, outer_pad, sizeof(outer_pad)))
+	if (fmp_sha256_update(&ctx->outer_ctx, outer_pad, sizeof(outer_pad)))
 		goto err;
 
 	ret = 0;
@@ -82,7 +82,7 @@ int hmac_sha256_update(struct hmac_sha256_ctx *ctx, const u8 *data, unsigned int
 	if (!ctx || !data)
 		return 0;
 
-	return sha256_update(&ctx->inner_ctx, data, data_len);
+	return fmp_sha256_update(&ctx->inner_ctx, data, data_len);
 }
 
 int hmac_sha256_final(struct hmac_sha256_ctx *ctx, u8 *out)
@@ -93,13 +93,13 @@ int hmac_sha256_final(struct hmac_sha256_ctx *ctx, u8 *out)
 	if (!ctx || !out)
 		goto err;
 
-	if (sha256_final(&ctx->inner_ctx, result))
+	if (fmp_sha256_final(&ctx->inner_ctx, result))
 		goto err;
 
-	if (sha256_update(&ctx->outer_ctx, result, sizeof(result)))
+	if (fmp_sha256_update(&ctx->outer_ctx, result, sizeof(result)))
 		goto err;
 
-	if (sha256_final(&ctx->outer_ctx, result))
+	if (fmp_sha256_final(&ctx->outer_ctx, result))
 		goto err;
 
 	memcpy(out, result, sizeof(result));

@@ -388,16 +388,6 @@ config CRYPTO_KEYWRAP
 	  Support for key wrapping (NIST SP800-38F / RFC3394) without
 	  padding.
 
-comment "KDF modes"
-
-config CRYPTO_KBKDF_CTR_HMAC_SHA512
-    tristate "KBKDF CTR HMAC(SHA512) support"
-    select CRYPTO_HMAC
-    select CRYPTO_SHA512
-    help
-      NIST SP 800-108 Key Derivation Function (KDF).
-      Counter mode. HMAC(SHA512) based
-
 config CRYPTO_NHPOLY1305
 	tristate
 	select CRYPTO_HASH
@@ -1632,27 +1622,6 @@ config CRYPTO_TWOFISH_AVX_X86_64
 
 	  See also:
 	  <http://www.schneier.com/twofish.html>
-
-config CRYPTO_DISKCIPHER
-	bool "Diskcipher support"
-	default n
-	help
-	 Diskcipher support the crypt operation of the block host device
-	 that has inline crypto engine.
-
-config CRYPTO_DISKCIPHER_DUN
-	bool "Diskcipher use dun"
-	default y
-	depends on CRYPTO_DISKCIPHER && F2FS_FS_ENCRYPTION
-	help
-	 support Diskcipher use dun(device unit number)
-
-config CRYPTO_DISKCIPHER_DEBUG
-	bool "Diskcipher debug support"
-	default n
-	depends on CRYPTO_DISKCIPHER
-	help
-	 support Diskcipher debug
 
 comment "Compression"
 

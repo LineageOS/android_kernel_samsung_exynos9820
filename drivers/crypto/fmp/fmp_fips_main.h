@@ -11,18 +11,35 @@
 #define _FMP_FIPS_MAIN_H_
 
 #if defined(CONFIG_EXYNOS_FMP_FIPS)
+int exynos_fmp_fips_register(struct exynos_fmp *fmp);
 int exynos_fmp_fips_init(struct exynos_fmp *fmp);
-void exynos_fmp_fips_exit(struct exynos_fmp *fmp);
+void exynos_fmp_fips_test(struct exynos_fmp *fmp);
+void exynos_fmp_fips_deregister(struct exynos_fmp *fmp);
+int exynos_fmp_fips_integrity(struct exynos_fmp *fmp);
 bool in_fmp_fips_err(void);
 bool in_fmp_fips_init(void);
 #else
+inline int exynos_fmp_fips_register(struct exynos_fmp *fmp)
+{
+	return 0;
+}
+
 inline int exynos_fmp_fips_init(struct exynos_fmp *fmp)
 {
 	return 0;
 }
 
-inline void exynos_fmp_fips_exit(struct exynos_fmp *fmp)
+inline void exynos_fmp_fips_test(struct exynos_fmp *fmp)
 {
+}
+
+inline void exynos_fmp_fips_deregister(struct exynos_fmp *fmp)
+{
+}
+
+int exynos_fmp_fips_integrity(struct exynos_fmp *fmp)
+{
+	return 0;
 }
 
 inline bool in_fmp_fips_err(void)

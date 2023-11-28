@@ -46,10 +46,6 @@
 #include <linux/bit_spinlock.h>
 #include <linux/pagevec.h>
 #include <trace/events/block.h>
-#if defined(CONFIG_CRYPTO_DISKCIPHER_DEBUG)
-#include <crypto/diskcipher.h>
-#endif
-#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_FS_ENCRYPTION)
 #include <linux/fscrypt.h>
 
 static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
@@ -3168,6 +3164,8 @@ static int submit_bh_wbc(int op, int op_flags, struct buffer_head *bh,
 	 */
 	bio = bio_alloc(GFP_NOIO, 1);
 
+	fscrypt_set_bio_crypt_ctx_bh(bio, bh, GFP_NOIO);
+
 	if (wbc) {
 		wbc_init_bio(wbc, bio);
 		wbc_account_io(wbc, bh->b_page, bh->b_size);
@@ -3571,35 +3569,6 @@ int bh_submit_read(struct buffer_head *bh)
 	return -EIO;
 }
 EXPORT_SYMBOL(bh_submit_read);
-
-/**
- * bh_submit_read - Submit a locked buffer for reading
- * @bh: struct buffer_head
- *
- * Returns zero on success and -EIO on error.
- */
-int bh_submit_read_fbe(struct inode *inode, struct buffer_head *bh)
-{
-	BUG_ON(!buffer_locked(bh));
-
-	if (buffer_uptodate(bh)) {
-		unlock_buffer(bh);
-		return 0;
-	}
-	get_bh(bh);
-	bh->b_end_io = end_buffer_read_sync;
-
-	bh->b_private = fscrypt_get_bio_cryptd(inode);
-	submit_bh(REQ_OP_READ, bh->b_private?REQ_CRYPT:0, bh);
-
-	/* Restore bh->b_private */
-	bh->b_private = NULL;
-	wait_on_buffer(bh);
-	if (buffer_uptodate(bh))
-		return 0;
-	return -EIO;
-}
-EXPORT_SYMBOL(bh_submit_read_fbe);
 
 /*
  * Seek for SEEK_DATA / SEEK_HOLE within @page, starting at @lastoff.

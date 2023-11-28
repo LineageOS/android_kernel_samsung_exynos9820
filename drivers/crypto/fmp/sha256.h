@@ -33,11 +33,11 @@ struct sha256_state {
 	u8 buf[SHA256_BLOCK_SIZE];
 };
 
-struct shash_desc {
+struct fmp_shash_desc {
 	struct sha256_state __ctx;
 };
 
-typedef struct shash_desc SHA256_CTX;
+typedef struct fmp_shash_desc SHA256_CTX;
 
 typedef void (sha256_block_fn)(struct sha256_state *sst, u8 const *src,
 			int blocks);
@@ -45,29 +45,29 @@ typedef void (sha256_block_fn)(struct sha256_state *sst, u8 const *src,
 /* Initialises desc
  * Returns 0 at success, nonzero otherwise
  */
-int sha256_init(struct shash_desc *desc);
+int fmp_sha256_init(struct fmp_shash_desc *desc);
 
 /* Adds len bytes from data to desc.
  * Returns 0 at success, nonzero otherwise
  */
-int sha256_update(struct shash_desc *desc, const u8 *data,
+int fmp_sha256_update(struct fmp_shash_desc *desc, const u8 *data,
 			unsigned int len);
 
 /* Adds the final padding to desc and writes the resulting digest
  * to out, which must have at least SHA256_DIGEST_SIZE bytes of space.
  * Returns 0 at success, nonzero otherwise
  */
-int sha256_final(struct shash_desc *desc, u8 *out);
+int fmp_sha256_final(struct fmp_shash_desc *desc, u8 *out);
 
 /* Writes the digest of len bytes from data to out. Returns out.
  * Out should be preallocated at least SHA256_DIGEST_SIZE length.
  * Returns 0 at success, nonzero otherwise
  */
-int sha256(const u8 *data, unsigned int len, u8 *out);
+int fmp_sha256(const u8 *data, unsigned int len, u8 *out);
 
 /* desc dup
  * Returns 0 at success, nonzero otherwise
  */
-int sha256_desc_copy(struct shash_desc *dst, const struct shash_desc *src);
+int fmp_sha256_desc_copy(struct fmp_shash_desc *dst, const struct fmp_shash_desc *src);
 
 #endif  /* SHA256_FMP_H */

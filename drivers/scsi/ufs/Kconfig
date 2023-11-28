@@ -148,6 +148,16 @@ config SCSI_UFS_QCOM
 	  Select this if you have UFS controller on QCOM chipset.
 	  If unsure, say N.
 
+config SCSI_UFS_CRYPTO
+	bool "UFS Crypto Engine Support"
+	depends on SCSI_UFSHCD && BLK_INLINE_ENCRYPTION
+	help
+	  Enable Crypto Engine Support in UFS.
+	  Enabling this makes it possible for the kernel to use the crypto
+	  capabilities of the UFS device (if present) to perform crypto
+	  operations on data being transferred to/from the device.
+
+
 config SCSI_UFS_EXYNOS
 	tristate "EXYNOS UFS Host Controller Driver"
 	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
@@ -158,32 +168,12 @@ config SCSI_UFS_EXYNOS
 
 	  If unsure, say N.
 
-config SCSI_UFS_FMP_DUMP
-	tristate "EXYNOS Flash Memory Protector Dump for UFS Host"
-	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
-	---help---
-	  This selects the EXYNOS UFS FMP DUMP.
-
-	  If you have a controller with this interface, say Y or M here.
-
-	  If unsure, say N.
-
 config SCSI_UFS_EXYNOS_FMP
-	tristate "EXYNOS Flash Memory Protector for UFS Host"
-	depends on SCSI_UFS_EXYNOS && EXYNOS_FMP
-	select SCSI_UFS_EXYNOS_SMU
+	bool "EXYNOS Flash Memory Protector for UFS Host"
+	depends on SCSI_UFS_EXYNOS && EXYNOS_FMP && SCSI_UFS_CRYPTO
+	default y
 	---help---
 	  This selects the EXYNOS UFS FMP Driver.
-
-	  If you have a controller with this interface, say Y or M here.
-
-	  If unsure, say N.
-
-config SCSI_UFS_EXYNOS_SMU
-	tristate "EXYNOS Secure Management Unit for UFS Host"
-	depends on SCSI_UFS_EXYNOS && EXYNOS_SMU
-	---help---
-	  This selects the EXYNOS UFS SMU Driver.
 
 	  If you have a controller with this interface, say Y or M here.
 

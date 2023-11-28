@@ -32,9 +32,6 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->data->under_android = pi->data->under_android;
 	ci->data->under_cache = pi->data->under_cache;
 	ci->data->under_obb = pi->data->under_obb;
-#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
-	ci->data->under_knox = pi->data->under_knox;
-#endif
 }
 
 /* helper function for derived state */
@@ -49,19 +46,15 @@ void setup_derived_state(struct inode *inode, perm_t perm, userid_t userid,
 	info->data->under_android = false;
 	info->data->under_cache = false;
 	info->data->under_obb = false;
-#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
-	info->data->under_knox = false;
-#endif
 }
 
 /* While renaming, there is a point where we want the path from dentry,
  * but the name from newdentry
  */
-void get_derived_permission_inode_new(struct dentry *parent,
-		struct inode *inode,
-		const struct qstr *name)
+void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
+				const struct qstr *name)
 {
-	struct sdcardfs_inode_info *info = SDCARDFS_I(inode);
+	struct sdcardfs_inode_info *info = SDCARDFS_I(d_inode(dentry));
 	struct sdcardfs_inode_info *parent_info = SDCARDFS_I(d_inode(parent));
 	struct sdcardfs_inode_data *parent_data = parent_info->data;
 	appid_t appid;
@@ -73,11 +66,6 @@ void get_derived_permission_inode_new(struct dentry *parent,
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_media = QSTR_LITERAL("media");
 	struct qstr q_cache = QSTR_LITERAL("cache");
-#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
-	/* refer to perm_t in sdcardfs.h */
-	struct qstr q_knox = QSTR_LITERAL("knox");
-	struct qstr q_shared = QSTR_LITERAL("shared");
-#endif
 
 	/* By default, each inode inherits from its parent.
 	 * the properties are maintained on its private fields
@@ -87,10 +75,10 @@ void get_derived_permission_inode_new(struct dentry *parent,
 	 * of using the inode permissions.
 	 */
 
-	inherit_derived_state(d_inode(parent), inode);
+	inherit_derived_state(d_inode(parent), d_inode(dentry));
 
 	/* Files don't get special labels */
-	if (!S_ISDIR(inode->i_mode)) {
+	if (!S_ISDIR(d_inode(dentry)->i_mode)) {
 		set_top(info, parent_info);
 		return;
 	}
@@ -115,11 +103,6 @@ void get_derived_permission_inode_new(struct dentry *parent,
 			/* App-specific directories inside; let anyone traverse */
 			info->data->perm = PERM_ANDROID;
 			info->data->under_android = true;
-#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
-		} else if (qstr_case_eq(name, &q_knox)) {
-			info->data->perm = PERM_KNOX_PRE_ROOT;
-			info->data->under_knox = true;
-#endif
 		} else {
 			set_top(info, parent_info);
 		}
@@ -159,59 +142,12 @@ void get_derived_permission_inode_new(struct dentry *parent,
 		}
 		set_top(info, parent_info);
 		break;
-
-#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
-	/* KNOX */
-	case PERM_KNOX_PRE_ROOT:
-		info->data->perm = PERM_KNOX_ROOT;
-		err = kstrtoul(name->name, 10, &user_num);
-		if (err)
-			info->data->userid = 10; /* default container no. */
-		else
-			info->data->userid = user_num;
-		break;
-	case PERM_KNOX_ROOT:
-		if (qstr_case_eq(name, &q_Android))
-			info->data->perm = PERM_KNOX_ANDROID;
-		set_top(info, parent_info);
-		break;
-	case PERM_KNOX_ANDROID:
-		if (qstr_case_eq(name, &q_data)) {
-			info->data->perm = PERM_KNOX_ANDROID_DATA;
-			set_top(info, parent_info);
-		} else if (qstr_case_eq(name, &q_shared)) {
-			info->data->perm = PERM_KNOX_ANDROID_SHARED;
-			info->data->d_uid =
-				multiuser_get_uid(parent_data->userid, 0);
-		} else {
-			set_top(info, parent_info);
-		}
-		break;
-	case PERM_KNOX_ANDROID_DATA:
-		info->data->perm = PERM_KNOX_ANDROID_PACKAGE;
-		appid = get_appid(name->name);
-		if (appid != 0 && !is_excluded(name->name, parent_data->userid))
-			info->data->d_uid =
-				multiuser_get_uid(parent_data->userid, appid);
-		break;
-	case PERM_KNOX_ANDROID_SHARED:
-	case PERM_KNOX_ANDROID_PACKAGE:
-		set_top(info, parent_info);
-		break;
-#endif
 	}
-}
-
-void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
-		const struct qstr *name)
-{
-	get_derived_permission_inode_new(parent, d_inode(dentry), name);
 }
 
 void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 {
-	get_derived_permission_inode_new(parent, d_inode(dentry),
-			&dentry->d_name);
+	get_derived_permission_new(parent, dentry, &dentry->d_name);
 }
 
 static appid_t get_type(const char *name)
@@ -394,12 +330,11 @@ void fixup_perms_recursive(struct dentry *dentry, struct limit_search *limit)
 }
 
 /* main function for updating derived permission */
-inline void update_derived_permission_lock(struct dentry *dentry,
-		struct inode *inode)
+inline void update_derived_permission_lock(struct dentry *dentry)
 {
 	struct dentry *parent;
 
-	if (!dentry || !inode) {
+	if (!dentry || !d_inode(dentry)) {
 		pr_err("sdcardfs: %s: invalid dentry\n", __func__);
 		return;
 	}
@@ -410,12 +345,11 @@ inline void update_derived_permission_lock(struct dentry *dentry,
 	if (!IS_ROOT(dentry)) {
 		parent = dget_parent(dentry);
 		if (parent) {
-			get_derived_permission_inode_new(parent, inode,
-					&dentry->d_name);
+			get_derived_permission(parent, dentry);
 			dput(parent);
 		}
 	}
-	fixup_tmp_permissions(inode);
+	fixup_tmp_permissions(d_inode(dentry));
 }
 
 int need_graft_path(struct dentry *dentry)

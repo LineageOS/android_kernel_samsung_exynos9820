@@ -56,7 +56,6 @@ CFLAGS_jitterentropy.o = -O0
 jitterentropy_rng-y := jitterentropy.o jitterentropy-kcapi.o
 obj-$(CONFIG_CRYPTO_TEST) += tcrypt.o
 obj-$(CONFIG_CRYPTO_GHASH) += ghash-generic.o
-obj-$(CONFIG_CRYPTO_KBKDF_CTR_HMAC_SHA512) += kbkdf.o
 
 # Keep this at the bottom of FIPS boundary
 obj-$(CONFIG_CRYPTO_FIPS) += last_file.o
@@ -155,7 +154,6 @@ obj-$(CONFIG_CRYPTO_USER_API_HASH) += algif_hash.o
 obj-$(CONFIG_CRYPTO_USER_API_SKCIPHER) += algif_skcipher.o
 obj-$(CONFIG_CRYPTO_USER_API_RNG) += algif_rng.o
 obj-$(CONFIG_CRYPTO_USER_API_AEAD) += algif_aead.o
-obj-$(CONFIG_CRYPTO_DISKCIPHER) += diskcipher.o
 obj-$(CONFIG_CRYPTO_ZSTD) += zstd.o
 
 ecdh_generic-y := ecc.o

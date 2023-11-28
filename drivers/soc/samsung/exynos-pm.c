@@ -27,6 +27,10 @@
 #include <soc/samsung/exynos-pmu.h>
 #include <soc/samsung/exynos-powermode.h>
 
+#ifdef CONFIG_SEC_PM_DEBUG
+#include <linux/interrupt.h>
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 #define WAKEUP_STAT_EINT                (1 << 12)
 #define WAKEUP_STAT_RTC_ALARM           (1 << 0)
 /*
@@ -44,6 +48,28 @@ extern u32 exynos_eint_to_pin_num(int eint);
 struct wakeup_stat_name {
 	const char *name[32];
 };
+
+static void exynos_print_wakeup_sources(int irq, const char *name)
+{
+	struct irq_desc *desc;
+
+	if (irq < 0) {
+		if (name)
+			pr_info("PM: Resume caused by SYSINT: %s\n", name);
+
+		return;
+	}
+
+	desc = irq_to_desc(irq);
+
+	if (desc && desc->action && desc->action->name)
+		pr_info("PM: Resume caused by IRQ %d, %s\n", irq,
+				desc->action->name);
+	else
+		pr_info("PM: Resume caused by IRQ %d\n", irq);
+}
+#else
+static inline void exynos_print_wakeup_sources(int irq, const char *name) {}
 #endif /* CONFIG_SEC_PM_DEBUG */
 
 struct exynos_pm_info {
@@ -101,10 +127,8 @@ static void exynos_show_wakeup_reason_eint(void)
 			gpio = exynos_eint_to_pin_num(i + bit);
 			irq = gpio_to_irq(gpio);
 
-#ifdef CONFIG_SUSPEND
-			log_wakeup_reason(irq);
-		//	update_wakeup_reason_stats(irq, i + bit);
-#endif
+			exynos_print_wakeup_sources(irq, NULL);
+
 			found = 1;
 		}
 	}
@@ -138,12 +162,11 @@ static void exynos_show_wakeup_reason_sysint(unsigned int stat,
 
 	for_each_set_bit(bit, &lstat, 32) {
 		name = ws_names->name[bit];
-		pm_system_wakeup_without_irq_num = true;
 
 		if (!name)
 			continue;
 #ifdef CONFIG_SUSPEND
-		log_wakeup_reason_name(name);
+		exynos_print_wakeup_sources(-1, name);
 #endif
 	}
 }
@@ -271,6 +294,10 @@ int exynos_pm_notify(enum exynos_pm_event event)
 EXPORT_SYMBOL_GPL(exynos_pm_notify);
 #endif /* CONFIG_CPU_IDLE */
 
+#ifdef CONFIG_SEC_GPIO_DVS
+extern void gpio_dvs_check_sleepgpio(void);
+#endif
+
 #if defined(CONFIG_SOC_EXYNOS8895)
 #define SLEEP_VTS_ON   9
 #define SLEEP_AUD_ON   10
@@ -300,6 +327,15 @@ static int exynos_pm_syscore_suspend(void)
 				EXYNOS_PM_PREFIX,__func__, pm_info->suspend_mode_idx);
 	}
 
+#ifdef CONFIG_SEC_GPIO_DVS
+	/************************ Caution !!! ****************************/
+	/* This function must be located in appropriate SLEEP position
+	 * in accordance with the specification of each BB vendor.
+	 */
+	/************************ Caution !!! ****************************/
+	gpio_dvs_check_sleepgpio();
+#endif /* CONFIG_SEC_GPIO_DVS */
+
 	return 0;
 }
 
@@ -322,10 +358,6 @@ static struct syscore_ops exynos_pm_syscore_ops = {
 	.resume		= exynos_pm_syscore_resume,
 };
 
-#ifdef CONFIG_SEC_GPIO_DVS
-extern void gpio_dvs_check_sleepgpio(void);
-#endif
-
 static int exynos_pm_enter(suspend_state_t state)
 {
 	unsigned int psci_index;
@@ -333,15 +365,6 @@ static int exynos_pm_enter(suspend_state_t state)
 	unsigned int prev_apsoc = 0, post_apsoc = 0;
 	unsigned int prev_seq_early_wakeup = 0, post_seq_early_wakeup = 0;
 	unsigned int prev_req;
-
-#ifdef CONFIG_SEC_GPIO_DVS
-	/************************ Caution !!! ****************************/
-	/* This function must be located in appropriate SLEEP position
-	 * in accordance with the specification of each BB vendor.
-	 */
-	/************************ Caution !!! ****************************/
-	gpio_dvs_check_sleepgpio();
-#endif /* CONFIG_SEC_GPIO_DVS */
 
 	psci_index = pm_info->suspend_psci_idx;
 

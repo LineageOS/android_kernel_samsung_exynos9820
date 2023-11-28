@@ -2,6 +2,7 @@
  * Exynos FMP cipher driver
  *
  * Copyright (C) 2016 Samsung Electronics Co., Ltd.
+ * Authors: Boojin Kim <boojin.kim@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,143 +19,53 @@
 #include <linux/fs.h>
 #include <linux/blk_types.h>
 #include <crypto/fmp.h>
-
+#include <linux/mm_types.h>
 #include "fmp_test.h"
 
-#define MAX_SCAN_PART	(50)
-#define MAX_RETRY_COUNT (0x100000)
-
-static dev_t find_devt_for_test(struct exynos_fmp *fmp,
-				struct fmp_test_data *data)
-{
-	int i, idx = 0;
-	uint32_t count = 0;
-	uint64_t size;
-	uint64_t size_list[MAX_SCAN_PART];
-	dev_t devt_list[MAX_SCAN_PART];
-	dev_t devt_scan, devt;
-	struct block_device *bdev;
-	struct device *dev = fmp->dev;
-	fmode_t fmode = FMODE_WRITE | FMODE_READ;
-
-	memset(size_list, 0, sizeof(size_list));
-	memset(devt_list, 0, sizeof(devt_list));
-	do {
-		for (i = 1; i < MAX_SCAN_PART; i++) {
-			devt_scan = blk_lookup_devt(data->block_type, i);
-			bdev = blkdev_get_by_dev(devt_scan, fmode, NULL);
-			if (IS_ERR(bdev))
-				continue;
-			else {
-				size_list[idx] =
-				    (uint64_t) i_size_read(bdev->bd_inode);
-				devt_list[idx++] = devt_scan;
-				blkdev_put(bdev, fmode);
-			}
-		}
-		if (!idx) {
-			mdelay(100);
-			count++;
-			continue;
-		}
-		for (i = 0; i < idx; i++) {
-			if (i == 0) {
-				size = size_list[i];
-				devt = devt_list[i];
-			} else {
-				if (size < size_list[i])
-					devt = devt_list[i];
-			}
-		}
-		bdev = blkdev_get_by_dev(devt, fmode, NULL);
-		dev_dbg(dev, "Found partno %d for FMP test\n",
-			bdev->bd_part->partno);
-		blkdev_put(bdev, fmode);
-		return devt;
-	} while (count < MAX_RETRY_COUNT);
-	dev_err(dev, "Block device isn't initialized yet for FMP test\n");
-	return (dev_t) 0;
-}
-
-static int get_fmp_host_type(struct device *dev,
-				    struct fmp_test_data *data)
-{
-	int ret;
-	struct device_node *node = dev->of_node;
-	const char *type;
-
-	ret =
-	    of_property_read_string_index(node, "exynos,block-type", 0, &type);
-	if (ret) {
-		pr_err("%s: Could not get block type\n", __func__);
-		return ret;
-	}
-	strlcpy(data->block_type, type, FMP_BLOCK_TYPE_NAME_LEN);
-	return 0;
-}
-
-static int get_fmp_test_block_offset(struct device *dev,
-				      struct fmp_test_data *data)
-{
-	int ret = 0;
-	struct device_node *node = dev->of_node;
-	uint32_t offset;
-
-	ret = of_property_read_u32(node, "exynos,fips-block_offset", &offset);
-	if (ret) {
-		pr_err("%s: Could not get fips test block offset\n", __func__);
-		ret = -EINVAL;
-		goto err;
-	}
-	data->test_block_offset = offset;
-err:
-	return ret;
-}
+#define MAX_RETRY_COUNT (0x100)
+#define FIPS_BLOCK_NAME	"/dev/block/by-name/fmp_selftest"
 
 /* test block device init for fmp test */
 struct fmp_test_data *fmp_test_init(struct exynos_fmp *fmp)
 {
-	int ret = 0;
 	struct fmp_test_data *data;
 	struct device *dev;
 	struct inode *inode;
 	struct super_block *sb;
 	unsigned long blocksize;
 	unsigned char blocksize_bits;
+	uint32_t count = 0;
+
 	fmode_t fmode = FMODE_WRITE | FMODE_READ;
 
 	if (!fmp) {
 		pr_err("%s: Invalid exynos fmp struct\n", __func__);
-		return NULL;
+		goto err;
 	}
 
 	dev = fmp->dev;
 	data = kmalloc(sizeof(struct fmp_test_data), GFP_KERNEL);
 	if (!data)
-		return NULL;
+		goto err;
+	do {
+		data->bdev = blkdev_get_by_path(FIPS_BLOCK_NAME, fmode, NULL);
+		if (IS_ERR(data->bdev)) {
+			dev_warn(dev, "retry blkdev_get_by_path = %d\n", count);
+			mdelay(100);
+			count++;
+			continue;
+		} else {
+			dev_info(dev, "FOUND fmp fips block = %d\n", count);
+			break;
+		}
+	} while (count < MAX_RETRY_COUNT);
 
-	ret = get_fmp_host_type(dev, data);
-	if (ret) {
-		dev_err(dev, "%s: Fail to get host type. ret(%d)", __func__,
-			ret);
-		goto err;
-	}
-	data->devt = find_devt_for_test(fmp, data);
-	if (!data->devt) {
-		dev_err(dev, "%s: Fail to find devt for self test\n", __func__);
-		goto err;
-	}
-	data->bdev = blkdev_get_by_dev(data->devt, fmode, NULL);
 	if (IS_ERR(data->bdev)) {
 		dev_err(dev, "%s: Fail to open block device\n", __func__);
-		goto err;
+		goto err_data;
 	}
-	ret = get_fmp_test_block_offset(dev, data);
-	if (ret) {
-		dev_err(dev, "%s: Fail to get fips offset. ret(%d)\n",
-			__func__, ret);
-		goto err;
-	}
+	data->test_block_offset = 1;
+
 	inode = data->bdev->bd_inode;
 	sb = inode->i_sb;
 	blocksize = sb->s_blocksize;
@@ -164,8 +75,9 @@ struct fmp_test_data *fmp_test_init(struct exynos_fmp *fmp)
 	     (blocksize * data->test_block_offset)) >> blocksize_bits;
 
 	return data;
-err:
+err_data:
 	kzfree(data);
+err:
 	return NULL;
 }
 
@@ -177,11 +89,9 @@ int fmp_cipher_run(struct exynos_fmp *fmp, struct fmp_test_data *fdata,
 	struct device *dev;
 	static struct buffer_head *bh;
 	u32 org_algo_mode;
-	int op_flags;
 
 	if (!fmp || !fdata || !ci) {
-		pr_err("%s: Invalid fmp struct: %p, %p, %p\n",
-			__func__, fmp, fdata, ci);
+		pr_err("%s: Invalid fmp struct(fmp, fdata, ci)\n", __func__);
 		return -EINVAL;
 	}
 	dev = fmp->dev;
@@ -199,6 +109,7 @@ int fmp_cipher_run(struct exynos_fmp *fmp, struct fmp_test_data *fdata,
 	ci->algo_mode |= EXYNOS_FMP_ALGO_MODE_TEST;
 
 	get_bh(bh);
+
 	/* priv is diskc for crypto test. */
 	if (!priv) {
 		/* ci is fmp_test_data->ci */
@@ -206,17 +117,18 @@ int fmp_cipher_run(struct exynos_fmp *fmp, struct fmp_test_data *fdata,
 		ci->ctx = fmp;
 		ci->use_diskc = 0;
 		ci->enc_mode = EXYNOS_FMP_FILE_ENC;
-		bh->b_private = ci;
+		bh->b_private = fmp;
+		fmp->bh = bh;
+		fmp->fips_run++;
 	} else {
 		/* ci is crypto_tfm_ctx(tfm) */
 		bh->b_private = priv;
 	}
-	op_flags = REQ_CRYPT;
 
 	if (write == WRITE_MODE) {
 		memcpy(bh->b_data, data, len);
 		set_buffer_dirty(bh);
-		ret = __sync_dirty_buffer(bh, op_flags | REQ_SYNC);
+		ret = __sync_dirty_buffer(bh, REQ_SYNC | REQ_FUA);
 		if (ret) {
 			dev_err(dev, "%s: IO error syncing for write mode\n",
 				__func__);
@@ -226,8 +138,8 @@ int fmp_cipher_run(struct exynos_fmp *fmp, struct fmp_test_data *fdata,
 		memset(bh->b_data, 0, FMP_BLK_SIZE);
 	} else {
 		lock_buffer(bh);
-		bh->b_end_io = end_buffer_read_sync;
-		submit_bh(REQ_OP_READ, REQ_SYNC | REQ_PRIO | op_flags, bh);
+		fmp_set_bh_compl_handler(bh);
+		submit_bh(REQ_OP_READ, REQ_SYNC | REQ_PRIO, bh);
 		wait_on_buffer(bh);
 		if (unlikely(!buffer_uptodate(bh))) {
 			ret = -EIO;
@@ -239,6 +151,8 @@ out:
 	if (ci)
 		ci->algo_mode = org_algo_mode;
 	put_bh(bh);
+
+	fmp->bh = NULL;
 	return ret;
 }
 

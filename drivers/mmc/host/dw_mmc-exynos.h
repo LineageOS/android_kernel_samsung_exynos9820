@@ -12,7 +12,6 @@
 #ifndef _DW_MMC_EXYNOS_H_
 #define _DW_MMC_EXYNOS_H_
 
-#include <crypto/smu.h>
 #include <crypto/fmp.h>
 
 #define NUM_PINS(x)			(x + 2)

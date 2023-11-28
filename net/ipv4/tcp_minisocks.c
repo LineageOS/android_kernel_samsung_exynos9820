@@ -441,7 +441,7 @@ void tcp_openreq_init_rwin(struct request_sock *req,
 		mss - (ireq->tstamp_ok ? TCPOLEN_TSTAMP_ALIGNED : 0) -
 		(ireq->saw_mpc ? MPTCP_SUB_LEN_DSM_ALIGN : 0),
 #else
-	tcp_select_initial_window(full_space,
+	tcp_select_initial_window(sock_net(sk_listener), full_space,
 		mss - (ireq->tstamp_ok ? TCPOLEN_TSTAMP_ALIGNED : 0),
 #endif
 		&req->rsk_rcv_wnd,

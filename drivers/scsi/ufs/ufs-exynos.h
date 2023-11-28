@@ -13,7 +13,7 @@
 #define _UFS_EXYNOS_H_
 
 #include <linux/pm_qos.h>
-#include <crypto/smu.h>
+#include <crypto/fmp.h>
 #include "ufs-cal-9820.h"
 
 #define UFS_VER_0004	4
@@ -666,6 +666,7 @@ extern void exynos_ufs_dump_cport_log(struct ufs_hba *hba);
 extern void exynos_ufs_show_uic_info(struct ufs_hba *hba);
 extern void exynos_ufs_cmd_log_start(struct ufs_hba *hba, struct scsi_cmnd *cmd);
 extern void exynos_ufs_cmd_log_end(struct ufs_hba *hba, int tag);
+void exynos_ufs_fmp_config(struct ufs_hba *hba, bool init);
 
 #ifndef __EXYNOS_UFS_VS_DEBUG__
 #define __EXYNOS_UFS_VS_DEBUG__

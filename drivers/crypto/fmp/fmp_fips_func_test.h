@@ -10,16 +10,16 @@
 #ifndef _FMP_FIPS_FUNC_TEST_H_
 #define _FMP_FIPS_FUNC_TEST_H_
 
+#include <crypto/fmp.h>
+
 #if defined(CONFIG_EXYNOS_FMP_FIPS)
 #if defined(CONFIG_EXYNOS_FMP_FIPS_FUNC_TEST)
 #define FMP_FUNCTEST_KAT_CASE_NUM 6
 #define FMP_FUNCTEST_NO_TEST "NO_TEST"
 
-int exynos_fmp_func_test_KAT_case(struct platform_device *pdev,
-				struct exynos_fmp *fmp);
+int exynos_fmp_func_test_KAT_case(struct exynos_fmp *fmp);
 #else
-inline int exynos_fmp_func_test_KAT_case(struct platform_device *pdev,
-				struct exynos_fmp *fmp)
+inline int exynos_fmp_func_test_KAT_case(struct exynos_fmp *fmp)
 {
 	if (fmp)
 		fmp->test_vops = NULL;

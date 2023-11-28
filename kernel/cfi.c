@@ -12,7 +12,6 @@
 #include <linux/spinlock.h>
 #include <asm/bug.h>
 #include <asm/cacheflush.h>
-#include <asm/memory.h>
 #include <asm/set_memory.h>
 
 /* Compiler-defined handler names */
@@ -229,7 +228,6 @@ static inline cfi_check_fn ptr_to_check_fn(const struct cfi_shadow __rcu *s,
 	unsigned long ptr)
 {
 	int index;
-	unsigned long check;
 
 	if (unlikely(!s))
 		return NULL; /* No shadow available */

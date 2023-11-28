@@ -58,7 +58,7 @@ static inline u32 Maj(u32 x, u32 y, u32 z)
 	return (x & y) | (z & (x | y));
 }
 
-static inline void *shash_desc_ctx(struct shash_desc *desc)
+static inline void *fmp_shash_desc_ctx(struct fmp_shash_desc *desc)
 {
 	return &desc->__ctx;
 }
@@ -385,11 +385,11 @@ static void sha256_generic_block_fn(struct sha256_state *sst, u8 const *src,
 	}
 }
 
-static int sha256_base_do_update(struct shash_desc *desc,
+static int sha256_base_do_update(struct fmp_shash_desc *desc,
 				 const u8 *data,
 				 unsigned int len, sha256_block_fn *block_fn)
 {
-	struct sha256_state *sctx = shash_desc_ctx(desc);
+	struct sha256_state *sctx = fmp_shash_desc_ctx(desc);
 	unsigned int partial = sctx->count % SHA256_BLOCK_SIZE;
 
 	sctx->count += len;
@@ -422,11 +422,11 @@ static int sha256_base_do_update(struct shash_desc *desc,
 	return 0;
 }
 
-static int sha256_base_do_finalize(struct shash_desc *desc,
+static int sha256_base_do_finalize(struct fmp_shash_desc *desc,
 				   sha256_block_fn *block_fn)
 {
 	const int bit_offset = SHA256_BLOCK_SIZE - sizeof(__be64);
-	struct sha256_state *sctx = shash_desc_ctx(desc);
+	struct sha256_state *sctx = fmp_shash_desc_ctx(desc);
 	__be64 *bits = (__be64 *) (sctx->buf + bit_offset);
 	unsigned int partial = sctx->count % SHA256_BLOCK_SIZE;
 
@@ -445,10 +445,10 @@ static int sha256_base_do_finalize(struct shash_desc *desc,
 	return 0;
 }
 
-static inline int sha256_base_finish(struct shash_desc *desc, u8 *out)
+static inline int sha256_base_finish(struct fmp_shash_desc *desc, u8 *out)
 {
 	unsigned int digest_size = SHA256_DIGEST_SIZE;
-	struct sha256_state *sctx = shash_desc_ctx(desc);
+	struct sha256_state *sctx = fmp_shash_desc_ctx(desc);
 	__be32 *digest = (__be32 *) out;
 	int i;
 
@@ -460,14 +460,14 @@ static inline int sha256_base_finish(struct shash_desc *desc, u8 *out)
 	return 0;
 }
 
-int sha256_init(struct shash_desc *desc)
+int fmp_sha256_init(struct fmp_shash_desc *desc)
 {
 	struct sha256_state *sctx = NULL;
 
 	if (!desc)
 		return -EINVAL;
 
-	sctx = shash_desc_ctx(desc);
+	sctx = fmp_shash_desc_ctx(desc);
 
 	sctx->state[0] = SHA256_H0;
 	sctx->state[1] = SHA256_H1;
@@ -482,7 +482,7 @@ int sha256_init(struct shash_desc *desc)
 	return 0;
 }
 
-int sha256_update(struct shash_desc *desc, const u8 *data, unsigned int len)
+int fmp_sha256_update(struct fmp_shash_desc *desc, const u8 *data, unsigned int len)
 {
 	if (!desc || !data)
 		return -EINVAL;
@@ -490,7 +490,7 @@ int sha256_update(struct shash_desc *desc, const u8 *data, unsigned int len)
 	return sha256_base_do_update(desc, data, len, sha256_generic_block_fn);
 }
 
-int sha256_final(struct shash_desc *desc, u8 *out)
+int fmp_sha256_final(struct fmp_shash_desc *desc, u8 *out)
 {
 	if (!desc || !out)
 		return -EINVAL;
@@ -499,42 +499,42 @@ int sha256_final(struct shash_desc *desc, u8 *out)
 	return sha256_base_finish(desc, out);
 }
 
-int sha256_finup(struct shash_desc *desc, const u8 *data,
+int fmp_sha256_finup(struct fmp_shash_desc *desc, const u8 *data,
 		 unsigned int len, u8 *hash)
 {
 	if (!desc || !data || !hash)
 		return -EINVAL;
 
 	sha256_base_do_update(desc, data, len, sha256_generic_block_fn);
-	return sha256_final(desc, hash);
+	return fmp_sha256_final(desc, hash);
 }
 
-int sha256_desc_copy(struct shash_desc *dst, const struct shash_desc *src)
+int fmp_sha256_desc_copy(struct fmp_shash_desc *dst, const struct fmp_shash_desc *src)
 {
 	if (!dst || !src)
 		return -EINVAL;
 
-	memcpy(dst, src, sizeof(struct shash_desc));
+	memcpy(dst, src, sizeof(struct fmp_shash_desc));
 	return 0;
 }
 
-int sha256(const u8 *data, unsigned int len, u8 *out)
+int fmp_sha256(const u8 *data, unsigned int len, u8 *out)
 {
-	struct shash_desc ctx;
+	struct fmp_shash_desc ctx;
 	int ret = -EINVAL;
 
 	if (!out || !data)
 		return -EINVAL;
 
-	ret = sha256_init(&ctx);
+	ret = fmp_sha256_init(&ctx);
 	if (ret != 0)
 		goto exit_error;
 
-	ret = sha256_update(&ctx, data, len);
+	ret = fmp_sha256_update(&ctx, data, len);
 	if (ret != 0)
 		goto exit_error;
 
-	ret = sha256_final(&ctx, out);
+	ret = fmp_sha256_final(&ctx, out);
 	if (ret != 0)
 		goto exit_error;
 

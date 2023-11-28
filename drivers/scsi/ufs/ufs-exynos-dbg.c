@@ -46,8 +46,6 @@ static struct exynos_ufs_sfr_log ufs_log_sfr[] = {
 	{"UIC COMMAND ARG1"		,	REG_UIC_COMMAND_ARG_1,		0},
 	{"UIC COMMAND ARG2"		,	REG_UIC_COMMAND_ARG_2,		0},
 	{"UIC COMMAND ARG3"		,	REG_UIC_COMMAND_ARG_3,		0},
-	{"CCAP"				,	REG_CRYPTO_CAPABILITY,		0},
-
 
 	{"VS HCI SFR"			,	LOG_VS_HCI_SFR,			0},
 
