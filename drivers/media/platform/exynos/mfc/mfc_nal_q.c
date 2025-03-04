@@ -902,6 +902,8 @@ static int __mfc_nal_q_run_in_buf_dec(struct mfc_ctx *ctx, DecoderInputStr *pInS
 	dma_addr_t buf_addr;
 	unsigned int strm_size;
 	unsigned int cpb_buf_size;
+	size_t dbuf_size;
+	struct vb2_buffer *vb;
 	int src_index, dst_index;
 	int i;
 
@@ -941,16 +943,17 @@ static int __mfc_nal_q_run_in_buf_dec(struct mfc_ctx *ctx, DecoderInputStr *pInS
 	}
 
 	/* src buffer setting */
-	src_index = src_mb->vb.vb2_buf.index;
+	vb = &src_mb->vb.vb2_buf;
+	src_index = vb->index;
 	buf_addr = src_mb->addr[0][0];
-	strm_size = src_mb->vb.vb2_buf.planes[0].bytesused;
-	cpb_buf_size = ALIGN(dec->src_buf_size, STREAM_BUF_ALIGN);
+	strm_size = vb->planes[0].bytesused;
+	dbuf_size = vb->planes[0].dbuf->size;
+	cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
 
-	if (strm_size > set_strm_size_max(cpb_buf_size)) {
-		mfc_info_ctx("[NALQ] Decrease strm_size : %u -> %u, gap : %d\n",
-				strm_size, set_strm_size_max(cpb_buf_size), STREAM_BUF_ALIGN);
-		strm_size = set_strm_size_max(cpb_buf_size);
-		src_mb->vb.vb2_buf.planes[0].bytesused = strm_size;
+	if (dbuf_size < cpb_buf_size) {
+		mfc_info_ctx("[NALQ] Decrease buffer size: %u -> %u\n",
+				cpb_buf_size, dbuf_size);
+		cpb_buf_size = (unsigned int)dbuf_size;
 	}
 
 	mfc_debug(2, "[NALQ][BUFINFO] ctx[%d] set src index: %d, addr: 0x%08llx\n",

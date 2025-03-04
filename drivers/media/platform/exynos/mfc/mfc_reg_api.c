@@ -258,24 +258,26 @@ int mfc_set_dec_stream_buffer(struct mfc_ctx *ctx, struct mfc_buf *mfc_buf,
 		  unsigned int start_num_byte, unsigned int strm_size)
 {
 	struct mfc_dev *dev = ctx->dev;
-	struct mfc_dec *dec = ctx->dec_priv;
 	unsigned int cpb_buf_size;
 	dma_addr_t addr;
+    size_t dbuf_size;
+	struct vb2_buffer *vb = &mfc_buf->vb.vb2_buf;
 	int index = -1;
 
 	mfc_debug_enter();
 
-	cpb_buf_size = ALIGN(dec->src_buf_size, STREAM_BUF_ALIGN);
-
 	if (mfc_buf) {
-		index = mfc_buf->vb.vb2_buf.index;
+		dbuf_size = vb->planes[0].dbuf->size;
+		cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
+		index = vb->index;
 		addr = mfc_buf->addr[0][0];
-		if (strm_size > set_strm_size_max(cpb_buf_size)) {
-			mfc_info_ctx("Decrease strm_size because of %d align: %u -> %u\n",
-				STREAM_BUF_ALIGN, strm_size, set_strm_size_max(cpb_buf_size));
-			strm_size = set_strm_size_max(cpb_buf_size);
-			mfc_buf->vb.vb2_buf.planes[0].bytesused = strm_size;
+		if (dbuf_size < cpb_buf_size) {
+			mfc_info_ctx("Decrease buffer size: %u -> %u\n",
+					cpb_buf_size, dbuf_size);
+			cpb_buf_size = (unsigned int)dbuf_size;
 		}
+		mfc_debug(2, "[BUFINFO] ctx[%d] set src index: %d, addr: 0x%08llx\n",
+				ctx->num, index, addr);
 	} else {
 		addr = 0;
 	}
