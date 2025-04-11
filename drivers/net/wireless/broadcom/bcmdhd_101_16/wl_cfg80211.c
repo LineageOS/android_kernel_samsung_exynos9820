@@ -4711,15 +4711,10 @@ wl_cfg80211_set_mfp(struct bcm_cfg80211 *cfg,
 			(wl_cfg80211_get_rsn_capa(wpa2_ie, &rsn_cap) == 0) && rsn_cap) {
 		WL_DBG(("rsn_cap 0x%x%x\n", rsn_cap[0], rsn_cap[1]));
 		/* Check for MFP cap in the RSN capability field */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
-		if (sme->mfp)
-#endif
-		{
-			if (rsn_cap[0] & RSN_CAP_MFPR) {
-				mfp = WL_MFP_REQUIRED;
-			} else if (rsn_cap[0] & RSN_CAP_MFPC) {
-				mfp = WL_MFP_CAPABLE;
-			}
+		if (rsn_cap[0] & RSN_CAP_MFPR) {
+			mfp = WL_MFP_REQUIRED;
+		} else if (rsn_cap[0] & RSN_CAP_MFPC) {
+			mfp = WL_MFP_CAPABLE;
 		}
 		/*
 		 * eptr --> end/last byte addr of wpa2_ie
@@ -4728,7 +4723,11 @@ wl_cfg80211_set_mfp(struct bcm_cfg80211 *cfg,
 		eptr = (const u8*)wpa2_ie + (wpa2_ie->len + TLV_HDR_LEN);
 		/* pointing ptr to the next byte after rns_cap */
 		ptr = (const u8*)rsn_cap + RSN_CAP_LEN;
-		if (mfp && (eptr - ptr) >= WPA2_PMKID_COUNT_LEN) {
+		/* If sme->mfp is not set, the bip iovar will not be fired. */
+		if (mfp &&
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+			(sme->mfp) &&
+#endif
 			/* pmkid now to point to 1st byte addr of pmkid in wpa2_ie */
 			pmkid = (const wpa_pmkid_list_t*)ptr;
 			count = pmkid->count.low | (pmkid->count.high << 8);
