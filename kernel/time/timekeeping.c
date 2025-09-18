@@ -703,18 +703,17 @@ static void timekeeping_forward_now(struct timekeeper *tk)
 }
 
 /**
- * ktime_get_real_ts64 - Returns the time of day in a timespec64.
+ * __getnstimeofday64 - Returns the time of day in a timespec64.
  * @ts:		pointer to the timespec to be set
  *
- * Returns the time of day in a timespec64 (WARN if suspended).
+ * Updates the time of day in the timespec.
+ * Returns 0 on success, or -ve when suspended (timespec will be undefined).
  */
-void ktime_get_real_ts64(struct timespec64 *ts)
+int __getnstimeofday64(struct timespec64 *ts)
 {
 	struct timekeeper *tk = &tk_core.timekeeper;
 	unsigned long seq;
 	u64 nsecs;
-
-	WARN_ON(timekeeping_suspended);
 
 	do {
 		seq = read_seqcount_begin(&tk_core.seq);
@@ -726,8 +725,28 @@ void ktime_get_real_ts64(struct timespec64 *ts)
 
 	ts->tv_nsec = 0;
 	timespec64_add_ns(ts, nsecs);
+
+	/*
+	 * Do not bail out early, in case there were callers still using
+	 * the value, even in the face of the WARN_ON.
+	 */
+	if (unlikely(timekeeping_suspended))
+		return -EAGAIN;
+	return 0;
 }
-EXPORT_SYMBOL(ktime_get_real_ts64);
+EXPORT_SYMBOL(__getnstimeofday64);
+
+/**
+ * getnstimeofday64 - Returns the time of day in a timespec64.
+ * @ts:		pointer to the timespec64 to be set
+ *
+ * Returns the time of day in a timespec64 (WARN if suspended).
+ */
+void getnstimeofday64(struct timespec64 *ts)
+{
+	WARN_ON(__getnstimeofday64(ts));
+}
+EXPORT_SYMBOL(getnstimeofday64);
 
 ktime_t ktime_get(void)
 {
