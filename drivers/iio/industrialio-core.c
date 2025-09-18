@@ -207,20 +207,24 @@ static int iio_device_set_clock(struct iio_dev *indio_dev, clockid_t clock_id)
  */
 s64 iio_get_time_ns(const struct iio_dev *indio_dev)
 {
-	struct timespec64 tp;
+	struct timespec tp;
 
 	switch (iio_device_get_clock(indio_dev)) {
 	case CLOCK_REALTIME:
-		return ktime_get_real_ns();
+		ktime_get_real_ts(&tp);
+		break;
 	case CLOCK_MONOTONIC:
-		return ktime_get_ns();
+		ktime_get_ts(&tp);
+		break;
 	case CLOCK_MONOTONIC_RAW:
-		return ktime_get_raw_ns();
+		getrawmonotonic(&tp);
+		break;
 	case CLOCK_REALTIME_COARSE:
-		return ktime_to_ns(ktime_get_coarse_real());
+		tp = current_kernel_time();
+		break;
 	case CLOCK_MONOTONIC_COARSE:
-		ktime_get_coarse_ts64(&tp);
-		return timespec64_to_ns(&tp);
+		tp = get_monotonic_coarse();
+		break;
 	case CLOCK_BOOTTIME:
 		return ktime_get_boottime_ns();
 	case CLOCK_TAI:
@@ -228,6 +232,8 @@ s64 iio_get_time_ns(const struct iio_dev *indio_dev)
 	default:
 		BUG();
 	}
+
+	return timespec_to_ns(&tp);
 }
 EXPORT_SYMBOL(iio_get_time_ns);
 
