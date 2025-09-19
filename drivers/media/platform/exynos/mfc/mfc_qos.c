@@ -913,7 +913,7 @@ static unsigned long __mfc_qos_get_fps_by_timestamp(struct mfc_ctx *ctx, struct 
 	} else {
 		found = 0;
 		list_for_each_entry_reverse(temp_ts, &ctx->ts_list, list) {
-			time_diff = timeval_compare(time, &temp_ts->timestamp);
+			time_diff = __mfc_timeval_compare(time, &temp_ts->timestamp);
 			if (time_diff == 0) {
 				/* Do not add if same timestamp already exists */
 				found = 1;
