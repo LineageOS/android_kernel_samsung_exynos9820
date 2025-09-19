@@ -70,7 +70,7 @@ static inline int atomic_inc_unless_in_range(atomic_t *v, int r)
 {
 	int ret;
 
-	while ((ret = __atomic_add_unless(v, 1, r)) == r) {
+	while ((ret = atomic_add_unless(v, 1, r)) == r) {
 		ret = atomic_cmpxchg(v, r, 0);
 		if (ret == r)
 			break;
@@ -89,7 +89,7 @@ static inline int atomic_dec_unless_in_range(atomic_t *v, int r)
 {
 	int ret;
 
-	while ((ret = __atomic_add_unless(v, -1, 0)) == 0) {
+	while ((ret = atomic_add_unless(v, -1, 0)) == 0) {
 		ret = atomic_cmpxchg(v, 0, r);
 		if (ret == 0)
 			break;
