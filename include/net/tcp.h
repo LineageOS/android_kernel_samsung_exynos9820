@@ -1822,6 +1822,7 @@ struct tcp_fastopen_context {
 void tcp_fastopen_active_disable(struct sock *sk);
 bool tcp_fastopen_active_should_disable(struct sock *sk);
 void tcp_fastopen_active_disable_ofo_check(struct sock *sk);
+void tcp_fastopen_active_timeout_reset(void);
 void tcp_fastopen_active_detect_blackhole(struct sock *sk, bool expired);
 
 /* Latencies incurred by various limits for a sender. They are
