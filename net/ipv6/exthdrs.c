@@ -857,6 +857,7 @@ int ipv6_parse_hopopts(struct sk_buff *skb)
 	    !pskb_may_pull(skb, (sizeof(struct ipv6hdr) +
 				 ((skb_transport_header(skb)[1] + 1) << 3)))) {
 		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_IPSTATS_MIB_INHDRERRORS12);
+fail_and_free:
 		kfree_skb(skb);
 		return -1;
 	}
