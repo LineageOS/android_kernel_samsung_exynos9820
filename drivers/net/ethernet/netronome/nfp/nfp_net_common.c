@@ -1614,6 +1614,7 @@ static int nfp_net_run_xdp(struct bpf_prog *prog, void *data, void *hard_start,
 
 	xdp.data_hard_start = hard_start;
 	xdp.data = data + *off;
+	xdp_set_data_meta_invalid(&xdp);
 	xdp.data_end = data + *off + *len;
 
 	orig_data = xdp.data;
@@ -3432,10 +3433,8 @@ static int nfp_net_xdp(struct net_device *netdev, struct netdev_bpf *xdp)
 		return nfp_net_xdp_setup(nn, xdp->prog, xdp->flags,
 					 xdp->extack);
 	case XDP_QUERY_PROG:
-		xdp->prog_attached = !!nn->xdp_prog;
-		if (nn->dp.bpf_offload_xdp)
-			xdp->prog_attached = XDP_ATTACHED_HW;
 		xdp->prog_id = nn->xdp_prog ? nn->xdp_prog->aux->id : 0;
+		xdp->flags = nn->xdp_prog ? nn->xdp_flags : 0;
 		return 0;
 	default:
 		return -EINVAL;

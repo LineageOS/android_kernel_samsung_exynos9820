@@ -73,6 +73,45 @@ int sk_msg_alloc(struct sock *sk, struct sk_msg *msg, int len,
 }
 EXPORT_SYMBOL_GPL(sk_msg_alloc);
 
+int sk_msg_clone(struct sock *sk, struct sk_msg *dst, struct sk_msg *src,
+		 u32 off, u32 len)
+{
+	int i = src->sg.start;
+	struct scatterlist *sge = sk_msg_elem(src, i);
+	u32 sge_len, sge_off;
+
+	if (sk_msg_full(dst))
+		return -ENOSPC;
+
+	while (off) {
+		if (sge->length > off)
+			break;
+		off -= sge->length;
+		sk_msg_iter_var_next(i);
+		if (i == src->sg.end && off)
+			return -ENOSPC;
+		sge = sk_msg_elem(src, i);
+	}
+
+	while (len) {
+		sge_len = sge->length - off;
+		sge_off = sge->offset + off;
+		if (sge_len > len)
+			sge_len = len;
+		off = 0;
+		len -= sge_len;
+		sk_msg_page_add(dst, sg_page(sge), sge_len, sge_off);
+		sk_mem_charge(sk, sge_len);
+		sk_msg_iter_var_next(i);
+		if (i == src->sg.end && len)
+			return -ENOSPC;
+		sge = sk_msg_elem(src, i);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sk_msg_clone);
+
 void sk_msg_return_zero(struct sock *sk, struct sk_msg *msg, int bytes)
 {
 	int i = msg->sg.start;
@@ -220,18 +259,28 @@ void sk_msg_trim(struct sock *sk, struct sk_msg *msg, int len)
 
 	msg->sg.data[i].length -= trim;
 	sk_mem_uncharge(sk, trim);
+	/* Adjust copybreak if it falls into the trimmed part of last buf */
+	if (msg->sg.curr == i && msg->sg.copybreak > msg->sg.data[i].length)
+		msg->sg.copybreak = msg->sg.data[i].length;
 out:
-	/* If we trim data before curr pointer update copybreak and current
-	 * so that any future copy operations start at new copy location.
+	sk_msg_iter_var_next(i);
+	msg->sg.end = i;
+
+	/* If we trim data a full sg elem before curr pointer update
+	 * copybreak and current so that any future copy operations
+	 * start at new copy location.
 	 * However trimed data that has not yet been used in a copy op
 	 * does not require an update.
 	 */
-	if (msg->sg.curr >= i) {
+	if (!msg->sg.size) {
+		msg->sg.curr = msg->sg.start;
+		msg->sg.copybreak = 0;
+	} else if (sk_msg_iter_dist(msg->sg.start, msg->sg.curr) >=
+		   sk_msg_iter_dist(msg->sg.start, msg->sg.end)) {
+		sk_msg_iter_var_prev(i);
 		msg->sg.curr = i;
 		msg->sg.copybreak = msg->sg.data[i].length;
 	}
-	sk_msg_iter_var_next(i);
-	msg->sg.end = i;
 }
 EXPORT_SYMBOL_GPL(sk_msg_trim);
 
@@ -360,7 +409,7 @@ static int sk_psock_skb_ingress(struct sk_psock *psock, struct sk_buff *skb)
 	sk_mem_charge(sk, skb->len);
 	copied = skb->len;
 	msg->sg.start = 0;
-	msg->sg.end = num_sge == MAX_MSG_FRAGS ? 0 : num_sge;
+	msg->sg.end = num_sge;
 	msg->skb = skb;
 
 	sk_psock_queue_msg(psock, msg);

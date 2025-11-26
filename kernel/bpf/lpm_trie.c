@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Longest prefix match list implementation
  *
  * Copyright (c) 2016,2017 Daniel Mack
  * Copyright (c) 2016 David Herrmann
- *
- * This file is subject to the terms and conditions of version 2 of the GNU
- * General Public License.  See the file COPYING in the main directory of the
- * Linux distribution for more details.
  */
 
 #include <linux/bpf.h>
+#include <linux/btf.h>
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -167,20 +165,59 @@ static size_t longest_prefix_match(const struct lpm_trie *trie,
 				   const struct lpm_trie_node *node,
 				   const struct bpf_lpm_trie_key *key)
 {
-	size_t prefixlen = 0;
-	size_t i;
+	u32 limit = min(node->prefixlen, key->prefixlen);
+	u32 prefixlen = 0, i = 0;
 
-	for (i = 0; i < trie->data_size; i++) {
-		size_t b;
+	BUILD_BUG_ON(offsetof(struct lpm_trie_node, data) % sizeof(u32));
+	BUILD_BUG_ON(offsetof(struct bpf_lpm_trie_key, data) % sizeof(u32));
 
-		b = 8 - fls(node->data[i] ^ key->data[i]);
-		prefixlen += b;
+#if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && defined(CONFIG_64BIT)
 
-		if (prefixlen >= node->prefixlen || prefixlen >= key->prefixlen)
-			return min(node->prefixlen, key->prefixlen);
+	/* data_size >= 16 has very small probability.
+	 * We do not use a loop for optimal code generation.
+	 */
+	if (trie->data_size >= 8) {
+		u64 diff = be64_to_cpu(*(__be64 *)node->data ^
+				       *(__be64 *)key->data);
 
-		if (b < 8)
-			break;
+		prefixlen = 64 - fls64(diff);
+		if (prefixlen >= limit)
+			return limit;
+		if (diff)
+			return prefixlen;
+		i = 8;
+	}
+#endif
+
+	while (trie->data_size >= i + 4) {
+		u32 diff = be32_to_cpu(*(__be32 *)&node->data[i] ^
+				       *(__be32 *)&key->data[i]);
+
+		prefixlen += 32 - fls(diff);
+		if (prefixlen >= limit)
+			return limit;
+		if (diff)
+			return prefixlen;
+		i += 4;
+	}
+
+	if (trie->data_size >= i + 2) {
+		u16 diff = be16_to_cpu(*(__be16 *)&node->data[i] ^
+				       *(__be16 *)&key->data[i]);
+
+		prefixlen += 16 - fls(diff);
+		if (prefixlen >= limit)
+			return limit;
+		if (diff)
+			return prefixlen;
+		i += 2;
+	}
+
+	if (trie->data_size >= i + 1) {
+		prefixlen += 8 - fls(node->data[i] ^ key->data[i]);
+
+		if (prefixlen >= limit)
+			return limit;
 	}
 
 	return prefixlen;
@@ -327,6 +364,10 @@ static int trie_update_elem(struct bpf_map *map,
 	 * simply assign the @new_node to that slot and be done.
 	 */
 	if (!node) {
+		if (flags == BPF_EXIST) {
+			ret = -ENOENT;
+			goto out;
+		}
 		rcu_assign_pointer(*slot, new_node);
 		goto out;
 	}
@@ -335,15 +376,28 @@ static int trie_update_elem(struct bpf_map *map,
 	 * which already has the correct data array set.
 	 */
 	if (node->prefixlen == matchlen) {
+		if (!(node->flags & LPM_TREE_NODE_FLAG_IM)) {
+			if (flags == BPF_NOEXIST) {
+				ret = -EEXIST;
+				goto out;
+			}
+			trie->n_entries--;
+		} else if (flags == BPF_EXIST) {
+			ret = -ENOENT;
+			goto out;
+		}
+
 		new_node->child[0] = node->child[0];
 		new_node->child[1] = node->child[1];
-
-		if (!(node->flags & LPM_TREE_NODE_FLAG_IM))
-			trie->n_entries--;
 
 		rcu_assign_pointer(*slot, new_node);
 		kfree_rcu(node, rcu);
 
+		goto out;
+	}
+
+	if (flags == BPF_EXIST) {
+		ret = -ENOENT;
 		goto out;
 	}
 
@@ -393,10 +447,100 @@ out:
 	return ret;
 }
 
-static int trie_delete_elem(struct bpf_map *map, void *key)
+/* Called from syscall or from eBPF program */
+static int trie_delete_elem(struct bpf_map *map, void *_key)
 {
-	/* TODO */
-	return -ENOSYS;
+	struct lpm_trie *trie = container_of(map, struct lpm_trie, map);
+	struct bpf_lpm_trie_key *key = _key;
+	struct lpm_trie_node __rcu **trim, **trim2;
+	struct lpm_trie_node *node, *parent;
+	unsigned long irq_flags;
+	unsigned int next_bit;
+	size_t matchlen = 0;
+	int ret = 0;
+
+	if (key->prefixlen > trie->max_prefixlen)
+		return -EINVAL;
+
+	raw_spin_lock_irqsave(&trie->lock, irq_flags);
+
+	/* Walk the tree looking for an exact key/length match and keeping
+	 * track of the path we traverse.  We will need to know the node
+	 * we wish to delete, and the slot that points to the node we want
+	 * to delete.  We may also need to know the nodes parent and the
+	 * slot that contains it.
+	 */
+	trim = &trie->root;
+	trim2 = trim;
+	parent = NULL;
+	while ((node = rcu_dereference_protected(
+		       *trim, lockdep_is_held(&trie->lock)))) {
+		matchlen = longest_prefix_match(trie, node, key);
+
+		if (node->prefixlen != matchlen ||
+		    node->prefixlen == key->prefixlen)
+			break;
+
+		parent = node;
+		trim2 = trim;
+		next_bit = extract_bit(key->data, node->prefixlen);
+		trim = &node->child[next_bit];
+	}
+
+	if (!node || node->prefixlen != key->prefixlen ||
+	    node->prefixlen != matchlen ||
+	    (node->flags & LPM_TREE_NODE_FLAG_IM)) {
+		ret = -ENOENT;
+		goto out;
+	}
+
+	trie->n_entries--;
+
+	/* If the node we are removing has two children, simply mark it
+	 * as intermediate and we are done.
+	 */
+	if (rcu_access_pointer(node->child[0]) &&
+	    rcu_access_pointer(node->child[1])) {
+		node->flags |= LPM_TREE_NODE_FLAG_IM;
+		goto out;
+	}
+
+	/* If the parent of the node we are about to delete is an intermediate
+	 * node, and the deleted node doesn't have any children, we can delete
+	 * the intermediate parent as well and promote its other child
+	 * up the tree.  Doing this maintains the invariant that all
+	 * intermediate nodes have exactly 2 children and that there are no
+	 * unnecessary intermediate nodes in the tree.
+	 */
+	if (parent && (parent->flags & LPM_TREE_NODE_FLAG_IM) &&
+	    !node->child[0] && !node->child[1]) {
+		if (node == rcu_access_pointer(parent->child[0]))
+			rcu_assign_pointer(
+				*trim2, rcu_access_pointer(parent->child[1]));
+		else
+			rcu_assign_pointer(
+				*trim2, rcu_access_pointer(parent->child[0]));
+		kfree_rcu(parent, rcu);
+		kfree_rcu(node, rcu);
+		goto out;
+	}
+
+	/* The node we are removing has either zero or one child. If there
+	 * is a child, move it into the removed node's slot then delete
+	 * the node.  Otherwise just clear the slot and delete the node.
+	 */
+	if (node->child[0])
+		rcu_assign_pointer(*trim, rcu_access_pointer(node->child[0]));
+	else if (node->child[1])
+		rcu_assign_pointer(*trim, rcu_access_pointer(node->child[1]));
+	else
+		RCU_INIT_POINTER(*trim, NULL);
+	kfree_rcu(node, rcu);
+
+out:
+	raw_spin_unlock_irqrestore(&trie->lock, irq_flags);
+
+	return ret;
 }
 
 #define LPM_DATA_SIZE_MAX	256
@@ -411,7 +555,7 @@ static int trie_delete_elem(struct bpf_map *map, void *key)
 #define LPM_KEY_SIZE_MIN	LPM_KEY_SIZE(LPM_DATA_SIZE_MIN)
 
 #define LPM_CREATE_FLAG_MASK	(BPF_F_NO_PREALLOC | BPF_F_NUMA_NODE |	\
-				 BPF_F_RDONLY | BPF_F_WRONLY)
+				 BPF_F_ACCESS_MASK)
 
 static struct bpf_map *trie_alloc(union bpf_attr *attr)
 {
@@ -426,6 +570,7 @@ static struct bpf_map *trie_alloc(union bpf_attr *attr)
 	if (attr->max_entries == 0 ||
 	    !(attr->map_flags & BPF_F_NO_PREALLOC) ||
 	    attr->map_flags & ~LPM_CREATE_FLAG_MASK ||
+	    !bpf_map_flags_access_ok(attr->map_flags) ||
 	    attr->key_size < LPM_KEY_SIZE_MIN ||
 	    attr->key_size > LPM_KEY_SIZE_MAX ||
 	    attr->value_size < LPM_VAL_SIZE_MIN ||
@@ -436,6 +581,7 @@ static struct bpf_map *trie_alloc(union bpf_attr *attr)
 	if (!trie)
 		return ERR_PTR(-ENOMEM);
 
+	/* copy mandatory map attributes */
 	bpf_map_init_from_attr(&trie->map, attr);
 	trie->data_size = attr->key_size -
 			  offsetof(struct bpf_lpm_trie_key, data);
@@ -444,14 +590,8 @@ static struct bpf_map *trie_alloc(union bpf_attr *attr)
 	cost_per_node = sizeof(struct lpm_trie_node) +
 			attr->value_size + trie->data_size;
 	cost += (u64) attr->max_entries * cost_per_node;
-	if (cost >= U32_MAX - PAGE_SIZE) {
-		ret = -E2BIG;
-		goto out_err;
-	}
 
-	trie->map.pages = round_up(cost, PAGE_SIZE) >> PAGE_SHIFT;
-
-	ret = bpf_map_precharge_memlock(trie->map.pages);
+	ret = bpf_map_charge_init(&trie->map.memory, cost);
 	if (ret)
 		goto out_err;
 

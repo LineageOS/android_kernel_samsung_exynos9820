@@ -84,6 +84,7 @@ __bpf_trace_tp_map_##call = {						\
 };
 
 #define FIRST(x, ...) x
+
 #undef DEFINE_EVENT_WRITABLE
 #define DEFINE_EVENT_WRITABLE(template, call, proto, args, size)	\
 static inline void bpf_test_buffer_##call(void)				\
@@ -110,4 +111,5 @@ __DEFINE_EVENT(template, call, PARAMS(proto), PARAMS(args), size)
 #undef DEFINE_EVENT_WRITABLE
 #undef __DEFINE_EVENT
 #undef FIRST
+
 #endif /* CONFIG_BPF_EVENTS */

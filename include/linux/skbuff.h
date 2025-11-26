@@ -245,7 +245,6 @@ struct iov_iter;
 struct napi_struct;
 struct bpf_prog;
 union bpf_attr;
-struct skb_ext;
 
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 struct nf_conntrack {
@@ -580,6 +579,8 @@ enum {
 	SKB_GSO_ESP = 1 << 15,
 
 	SKB_GSO_UDP = 1 << 16,
+
+	SKB_GSO_UDP_L4 = 1 << 17,
 };
 
 #if BITS_PER_LONG > 32
@@ -635,7 +636,6 @@ typedef unsigned char *sk_buff_data_t;
  *	@queue_mapping: Queue mapping for multiqueue devices
  *	@xmit_more: More SKBs are pending for this queue
  *	@pfmemalloc: skbuff was allocated from PFMEMALLOC reserves
- *	@active_extensions: active extensions (skb_ext_id types)
  *	@ndisc_nodetype: router type (from link layer)
  *	@ooo_okay: allow the mapping of a socket to a queue to be changed
  *	@l4_hash: indicate hash is a canonical 4-tuple hash over transport
@@ -664,7 +664,6 @@ typedef unsigned char *sk_buff_data_t;
  *	@data: Data head pointer
  *	@truesize: Buffer size
  *	@users: User count - see {datagram,tcp}.c
- *	@extensions: allocated extensions, valid if active_extensions is nonzero
  */
 
 struct sk_buff {
@@ -744,9 +743,7 @@ struct sk_buff {
 				head_frag:1,
 				xmit_more:1,
 				pfmemalloc:1;
-#ifdef CONFIG_SKB_EXTENSIONS
-	__u8			active_extensions;
-#endif
+
 	/* fields enclosed in headers_start/headers_end are copied
 	 * using a single memcpy() in __copy_skb_header()
 	 */
@@ -865,10 +862,6 @@ struct sk_buff {
 				*data;
 	unsigned int		truesize;
 	refcount_t		users;
-#ifdef CONFIG_SKB_EXTENSIONS
-	/* only useable after checking ->active_extensions != 0 */
-	struct skb_ext		*extensions;
-#endif
 };
 
 #ifdef __KERNEL__
@@ -1004,6 +997,16 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t priority, int flags,
 			    int node);
 struct sk_buff *__build_skb(void *data, unsigned int frag_size);
 struct sk_buff *build_skb(void *data, unsigned int frag_size);
+struct sk_buff *build_skb_around(struct sk_buff *skb,
+				 void *data, unsigned int frag_size);
+
+/**
+ * alloc_skb - allocate a network buffer
+ * @size: size to allocate
+ * @priority: allocation mask
+ *
+ * This function is a convenient wrapper around __alloc_skb().
+ */
 static inline struct sk_buff *alloc_skb(unsigned int size,
 					gfp_t priority)
 {
@@ -1192,7 +1195,7 @@ void __skb_get_hash(struct sk_buff *skb);
 u32 __skb_get_hash_symmetric(const struct sk_buff *skb);
 u32 skb_get_poff(const struct sk_buff *skb);
 u32 __skb_get_poff(const struct sk_buff *skb, void *data,
-		   const struct flow_keys *keys, int hlen);
+		   const struct flow_keys_basic *keys, int hlen);
 __be32 __skb_flow_get_ports(const struct sk_buff *skb, int thoff, u8 ip_proto,
 			    void *data, int hlen_proto);
 
@@ -1206,12 +1209,38 @@ void skb_flow_dissector_init(struct flow_dissector *flow_dissector,
 			     const struct flow_dissector_key *key,
 			     unsigned int key_count);
 
+#ifdef CONFIG_NET
+int skb_flow_dissector_prog_query(const union bpf_attr *attr,
+				  union bpf_attr __user *uattr);
 int skb_flow_dissector_bpf_prog_attach(const union bpf_attr *attr,
 				       struct bpf_prog *prog);
 
 int skb_flow_dissector_bpf_prog_detach(const union bpf_attr *attr);
+#else
+static inline int skb_flow_dissector_prog_query(const union bpf_attr *attr,
+						union bpf_attr __user *uattr)
+{
+	return -EOPNOTSUPP;
+}
 
-bool __skb_flow_dissect(const struct sk_buff *skb,
+static inline int skb_flow_dissector_bpf_prog_attach(const union bpf_attr *attr,
+						     struct bpf_prog *prog)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int skb_flow_dissector_bpf_prog_detach(const union bpf_attr *attr)
+{
+	return -EOPNOTSUPP;
+}
+#endif
+
+struct bpf_flow_dissector;
+bool bpf_flow_dissect(struct bpf_prog *prog, struct bpf_flow_dissector *ctx,
+		      __be16 proto, int nhoff, int hlen, unsigned int flags);
+
+bool __skb_flow_dissect(const struct net *net,
+			const struct sk_buff *skb,
 			struct flow_dissector *flow_dissector,
 			void *target_container,
 			void *data, __be16 proto, int nhoff, int hlen,
@@ -1221,8 +1250,8 @@ static inline bool skb_flow_dissect(const struct sk_buff *skb,
 				    struct flow_dissector *flow_dissector,
 				    void *target_container, unsigned int flags)
 {
-	return __skb_flow_dissect(skb, flow_dissector, target_container,
-				  NULL, 0, 0, 0, flags);
+	return __skb_flow_dissect(NULL, skb, flow_dissector,
+				  target_container, NULL, 0, 0, 0, flags);
 }
 
 static inline bool skb_flow_dissect_flow_keys(const struct sk_buff *skb,
@@ -1230,17 +1259,19 @@ static inline bool skb_flow_dissect_flow_keys(const struct sk_buff *skb,
 					      unsigned int flags)
 {
 	memset(flow, 0, sizeof(*flow));
-	return __skb_flow_dissect(skb, &flow_keys_dissector, flow,
-				  NULL, 0, 0, 0, flags);
+	return __skb_flow_dissect(NULL, skb, &flow_keys_dissector,
+				  flow, NULL, 0, 0, 0, flags);
 }
 
-static inline bool skb_flow_dissect_flow_keys_buf(struct flow_keys *flow,
-						  void *data, __be16 proto,
-						  int nhoff, int hlen,
-						  unsigned int flags)
+static inline bool
+skb_flow_dissect_flow_keys_basic(const struct net *net,
+				 const struct sk_buff *skb,
+				 struct flow_keys_basic *flow, void *data,
+				 __be16 proto, int nhoff, int hlen,
+				 unsigned int flags)
 {
 	memset(flow, 0, sizeof(*flow));
-	return __skb_flow_dissect(NULL, &flow_keys_buf_dissector, flow,
+	return __skb_flow_dissect(net, skb, &flow_keys_basic_dissector, flow,
 				  data, proto, nhoff, hlen, flags);
 }
 
@@ -2110,6 +2141,14 @@ static inline void skb_set_tail_pointer(struct sk_buff *skb, const int offset)
 
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 
+static inline void skb_assert_len(struct sk_buff *skb)
+{
+#ifdef CONFIG_DEBUG_NET
+	if (WARN_ONCE(!skb->len, "%s\n", __func__))
+		DO_ONCE_LITE(skb_dump, KERN_ERR, skb, false);
+#endif /* CONFIG_DEBUG_NET */
+}
+
 /*
  *	Add data to an sk_buff
  */
@@ -2455,11 +2494,13 @@ static inline void skb_pop_mac_header(struct sk_buff *skb)
 static inline void skb_probe_transport_header(struct sk_buff *skb,
 					      const int offset_hint)
 {
-	struct flow_keys keys;
+	struct flow_keys_basic keys;
 
 	if (skb_transport_header_was_set(skb))
 		return;
-	else if (skb_flow_dissect_flow_keys(skb, &keys, 0))
+
+	if (skb_flow_dissect_flow_keys_basic(NULL, skb, &keys,
+					     NULL, 0, 0, 0, 0))
 		skb_set_transport_header(skb, keys.control.thoff);
 	else if (offset_hint >= 0)
 		skb_set_transport_header(skb, offset_hint);
@@ -3574,6 +3615,7 @@ static inline bool __skb_metadata_differs(const struct sk_buff *skb_a,
 	/* Using more efficient varaiant than plain call to memcmp(). */
 #if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && BITS_PER_LONG == 64
 	u64 diffs = 0;
+
 	switch (meta_len) {
 #define __it(x, op) (x -= sizeof(u##op))
 #define __it_diff(a, b, op) (*(u##op *)__it(a, op)) ^ (*(u##op *)__it(b, op))
@@ -3599,8 +3641,10 @@ static inline bool skb_metadata_differs(const struct sk_buff *skb_a,
 {
 	u8 len_a = skb_metadata_len(skb_a);
 	u8 len_b = skb_metadata_len(skb_b);
+
 	if (!(len_a | len_b))
 		return false;
+
 	return len_a != len_b ?
 	       true : __skb_metadata_differs(skb_a, skb_b, len_a);
 }
@@ -3935,100 +3979,6 @@ static inline void nf_conntrack_get(struct nf_conntrack *nfct)
 		atomic_inc(&nfct->use);
 }
 #endif
-
-#ifdef CONFIG_SKB_EXTENSIONS
-enum skb_ext_id {
-#if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
-	SKB_EXT_BRIDGE_NF,
-#endif
-	SKB_EXT_NUM, /* must be last */
-};
-
-/**
- *	struct skb_ext - sk_buff extensions
- *	@refcnt: 1 on allocation, deallocated on 0
- *	@offset: offset to add to @data to obtain extension address
- *	@chunks: size currently allocated, stored in SKB_EXT_ALIGN_SHIFT units
- *	@data: start of extension data, variable sized
- *
- *	Note: offsets/lengths are stored in chunks of 8 bytes, this allows
- *	to use 'u8' types while allowing up to 2kb worth of extension data.
- */
-struct skb_ext {
-	refcount_t refcnt;
-	u8 offset[SKB_EXT_NUM]; /* in chunks of 8 bytes */
-	u8 chunks;		/* same */
-	char data[0] __aligned(8);
-};
-
-void *skb_ext_add(struct sk_buff *skb, enum skb_ext_id id);
-void __skb_ext_del(struct sk_buff *skb, enum skb_ext_id id);
-void __skb_ext_put(struct skb_ext *ext);
-static inline void skb_ext_put(struct sk_buff *skb)
-{
-	if (skb->active_extensions)
-		__skb_ext_put(skb->extensions);
-}
-
-static inline void skb_ext_get(struct sk_buff *skb)
-{
-	if (skb->active_extensions) {
-		struct skb_ext *ext = skb->extensions;
-		if (ext)
-			refcount_inc(&ext->refcnt);
-	}
-}
-
-static inline void __skb_ext_copy(struct sk_buff *dst,
-				  const struct sk_buff *src)
-{
-	dst->active_extensions = src->active_extensions;
-	if (src->active_extensions) {
-		struct skb_ext *ext = src->extensions;
-		refcount_inc(&ext->refcnt);
-		dst->extensions = ext;
-	}
-}
-
-static inline void skb_ext_copy(struct sk_buff *dst, const struct sk_buff *src)
-{
-	skb_ext_put(dst);
-	__skb_ext_copy(dst, src);
-}
-
-static inline bool __skb_ext_exist(const struct skb_ext *ext, enum skb_ext_id i)
-{
-	return !!ext->offset[i];
-}
-
-static inline bool skb_ext_exist(const struct sk_buff *skb, enum skb_ext_id id)
-{
-	return skb->active_extensions & (1 << id);
-}
-
-static inline void skb_ext_del(struct sk_buff *skb, enum skb_ext_id id)
-{
-	if (skb_ext_exist(skb, id))
-		__skb_ext_del(skb, id);
-}
-
-static inline void *skb_ext_find(const struct sk_buff *skb, enum skb_ext_id id)
-{
-	if (skb_ext_exist(skb, id)) {
-		struct skb_ext *ext = skb->extensions;
-		return (void *)ext + (ext->offset[id] << 3);
-	}
-	return NULL;
-}
-
-#else
-static inline void skb_ext_put(struct sk_buff *skb) {}
-static inline void skb_ext_get(struct sk_buff *skb) {}
-static inline void skb_ext_del(struct sk_buff *skb, int unused) {}
-static inline void __skb_ext_copy(struct sk_buff *d, const struct sk_buff *s) {}
-static inline void skb_ext_copy(struct sk_buff *dst, const struct sk_buff *s) {}
-#endif /* CONFIG_SKB_EXTENSIONS */
-
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
 static inline void nf_bridge_put(struct nf_bridge_info *nf_bridge)
 {
@@ -4114,19 +4064,12 @@ static inline void skb_init_secmark(struct sk_buff *skb)
 { }
 #endif
 
-static inline int secpath_exists(const struct sk_buff *skb)
-{
-#ifdef CONFIG_XFRM
-	return skb->sp != NULL;
-#else
-	return 0;
-#endif
-}
-
 static inline bool skb_irq_freeable(const struct sk_buff *skb)
 {
 	return !skb->destructor &&
-		!secpath_exists(skb) &&
+#if IS_ENABLED(CONFIG_XFRM)
+		!skb->sp &&
+#endif
 		!skb_nfct(skb) &&
 		!skb->_skb_refdst &&
 		!skb_has_frag_list(skb);
@@ -4265,6 +4208,12 @@ static inline bool skb_is_gso_v6(const struct sk_buff *skb)
 static inline bool skb_is_gso_sctp(const struct sk_buff *skb)
 {
 	return skb_shinfo(skb)->gso_type & SKB_GSO_SCTP;
+}
+
+/* Note: Should be called only if skb_is_gso(skb) is true */
+static inline bool skb_is_gso_tcp(const struct sk_buff *skb)
+{
+	return skb_shinfo(skb)->gso_type & (SKB_GSO_TCPV4 | SKB_GSO_TCPV6);
 }
 
 static inline void skb_gso_reset(struct sk_buff *skb)
