@@ -16,6 +16,23 @@
       "message": "bump",
       "revId": "a412cfaf86b980ce35cae96a35f678c8ea551575",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01c7b17a_3898521e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2026-09-20T03:59:39Z",
+      "side": 1,
+      "message": "Critical vulnerabilities, normally wouldn\u0027t touch others trees - but no response so far.",
+      "revId": "a412cfaf86b980ce35cae96a35f678c8ea551575",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
