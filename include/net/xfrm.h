@@ -744,9 +744,9 @@ static inline struct audit_buffer *xfrm_audit_start(const char *op)
 {
 	struct audit_buffer *audit_buf = NULL;
 
-	if (audit_enabled == 0)
+	if (audit_enabled == AUDIT_OFF)
 		return NULL;
-	audit_buf = audit_log_start(current->audit_context, GFP_ATOMIC,
+	audit_buf = audit_log_start(audit_context(), GFP_ATOMIC,
 				    AUDIT_MAC_IPSEC_EVENT);
 	if (audit_buf == NULL)
 		return NULL;
@@ -1078,6 +1078,7 @@ struct xfrm_offload {
 #define	XFRM_GSO_SEGMENT	16
 #define	XFRM_GRO		32
 #define	XFRM_ESP_NO_TRAILER	64
+#define	XFRM_DEV_RESUME		128
 
 	__u32			status;
 #define CRYPTO_SUCCESS				1
@@ -1922,21 +1923,28 @@ static inline struct xfrm_state *xfrm_input_state(struct sk_buff *skb)
 {
 	return skb->sp->xvec[skb->sp->len - 1];
 }
+#endif
+
 static inline struct xfrm_offload *xfrm_offload(struct sk_buff *skb)
 {
+#ifdef CONFIG_XFRM
 	struct sec_path *sp = skb->sp;
 
 	if (!sp || !sp->olen || sp->len != sp->olen)
 		return NULL;
 
 	return &sp->ovec[sp->olen - 1];
-}
+#else
+	return NULL;
 #endif
+}
 
 void __net_init xfrm_dev_init(void);
 
 #ifdef CONFIG_XFRM_OFFLOAD
-int validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t features);
+void xfrm_dev_resume(struct sk_buff *skb);
+void xfrm_dev_backlog(struct softnet_data *sd);
+struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t features, bool *again);
 int xfrm_dev_state_add(struct net *net, struct xfrm_state *x,
 		       struct xfrm_user_offload *xuo);
 bool xfrm_dev_offload_ok(struct sk_buff *skb, struct xfrm_state *x);
@@ -1950,6 +1958,8 @@ static inline bool xfrm_dst_offload_ok(struct dst_entry *dst)
 		return false;
 
 	xdst = (struct xfrm_dst *) dst;
+	if (!x->xso.offload_handle && !xdst->child->xfrm)
+		return true;
 	if (x->xso.offload_handle && (x->xso.dev == xfrm_dst_path(dst)->dev) &&
 	    !xdst->child->xfrm)
 		return true;
@@ -1977,9 +1987,17 @@ static inline void xfrm_dev_state_free(struct xfrm_state *x)
 	}
 }
 #else
-static inline int validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t features)
+static inline void xfrm_dev_resume(struct sk_buff *skb)
 {
-	return 0;
+}
+
+static inline void xfrm_dev_backlog(struct softnet_data *sd)
+{
+}
+
+static inline struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t features, bool *again)
+{
+	return skb;
 }
 
 static inline int xfrm_dev_state_add(struct net *net, struct xfrm_state *x, struct xfrm_user_offload *xuo)

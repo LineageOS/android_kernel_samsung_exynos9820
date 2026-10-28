@@ -173,7 +173,7 @@ COMPAT_SYSCALL_DEFINE2(truncate, const char __user *, path, compat_off_t, length
 }
 #endif
 
-static long do_sys_ftruncate(unsigned int fd, loff_t length, int small)
+long do_sys_ftruncate(unsigned int fd, loff_t length, int small)
 {
 	struct inode *inode;
 	struct dentry *dentry;
@@ -729,8 +729,7 @@ int open_check_o_direct(struct file *f)
 
 static int do_dentry_open(struct file *f,
 			  struct inode *inode,
-			  int (*open)(struct inode *, struct file *),
-			  const struct cred *cred)
+			  int (*open)(struct inode *, struct file *))
 {
 	static const struct file_operations empty_fops = {};
 	int error;
@@ -779,7 +778,7 @@ static int do_dentry_open(struct file *f,
 		goto cleanup_all;
 	}
 
-	error = security_file_open(f, cred);
+	error = security_file_open(f);
 	if (error)
 		goto cleanup_all;
 
@@ -850,8 +849,7 @@ int finish_open(struct file *file, struct dentry *dentry,
 	BUG_ON(*opened & FILE_OPENED); /* once it's opened, it's opened */
 
 	file->f_path.dentry = dentry;
-	error = do_dentry_open(file, d_backing_inode(dentry), open,
-			       current_cred());
+	error = do_dentry_open(file, d_backing_inode(dentry), open);
 	if (!error)
 		*opened |= FILE_OPENED;
 
@@ -892,8 +890,7 @@ EXPORT_SYMBOL(file_path);
  * @file: newly allocated file with f_flag initialized
  * @cred: credentials to use
  */
-int vfs_open(const struct path *path, struct file *file,
-	     const struct cred *cred)
+int vfs_open(const struct path *path, struct file *file)
 {
 	struct dentry *dentry = d_real(path->dentry, NULL, file->f_flags, 0);
 
@@ -901,7 +898,7 @@ int vfs_open(const struct path *path, struct file *file,
 		return PTR_ERR(dentry);
 
 	file->f_path = *path;
-	return do_dentry_open(file, d_backing_inode(dentry), NULL, cred);
+	return do_dentry_open(file, d_backing_inode(dentry), NULL);
 }
 
 struct file *dentry_open(const struct path *path, int flags,
@@ -918,7 +915,7 @@ struct file *dentry_open(const struct path *path, int flags,
 	f = get_empty_filp();
 	if (!IS_ERR(f)) {
 		f->f_flags = flags;
-		error = vfs_open(path, f, cred);
+		error = vfs_open(path, f);
 		if (!error) {
 			/* from now on we need fput() to dispose of f */
 			error = open_check_o_direct(f);
@@ -1069,7 +1066,7 @@ struct file *filp_clone_open(struct file *oldfile)
 		return file;
 
 	file->f_flags = oldfile->f_flags;
-	retval = vfs_open(&oldfile->f_path, file, oldfile->f_cred);
+	retval = vfs_open(&oldfile->f_path, file);
 	if (retval) {
 		put_filp(file);
 		return ERR_PTR(retval);
