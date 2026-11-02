@@ -16,6 +16,23 @@
       "message": "This should be merged into a new branch lineage-24.0, not lineage-23.2. If it is merged here it could break existing 23.2 builds on untested devices (Note 10 series) which have not yet been brought up on 24.0. This change accompanies changes to android_device_samsung_exynos9820-common, which will follow shortly.\n\nThe following repositories should also be branched off from lineage-23.2 to lineage-24.0 with no changes, to add LineageOS 24.0 support to the Galaxy S10 family:\n- android_device_samsung_beyond0lte\n- android_device_samsung_beyond1lte\n- android_device_samsung_beyond2lte\n- android_device_samsung_beyondx",
       "revId": "cfc38d711ad771ad2791cd5592ee927cb2531d39",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf8dd796_d7300979",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-02T21:06:24Z",
+      "side": 1,
+      "message": "Awaiting hardware-agnostic changes being merged into PhoenixKernel android-4.14-phoenix, then will merge those in and use that instead.",
+      "revId": "cfc38d711ad771ad2791cd5592ee927cb2531d39",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
