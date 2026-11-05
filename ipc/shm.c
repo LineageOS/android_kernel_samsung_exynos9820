@@ -182,7 +182,7 @@ static void shm_rcu_free(struct rcu_head *head)
 							rcu);
 	struct shmid_kernel *shp = container_of(ptr, struct shmid_kernel,
 							shm_perm);
-	security_shm_free(shp);
+	security_shm_free(&shp->shm_perm);
 	kvfree(shp);
 }
 
@@ -657,7 +657,7 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 	shp->mlock_user = NULL;
 
 	shp->shm_perm.security = NULL;
-	error = security_shm_alloc(shp);
+	error = security_shm_alloc(&shp->shm_perm);
 	if (error) {
 		kvfree(shp);
 		return error;
@@ -741,10 +741,7 @@ no_file:
  */
 static inline int shm_security(struct kern_ipc_perm *ipcp, int shmflg)
 {
-	struct shmid_kernel *shp;
-
-	shp = container_of(ipcp, struct shmid_kernel, shm_perm);
-	return security_shm_associate(shp, shmflg);
+	return security_shm_associate(ipcp, shmflg);
 }
 
 /*
@@ -762,7 +759,7 @@ static inline int shm_more_checks(struct kern_ipc_perm *ipcp,
 	return 0;
 }
 
-SYSCALL_DEFINE3(shmget, key_t, key, size_t, size, int, shmflg)
+long ksys_shmget(key_t key, size_t size, int shmflg)
 {
 	struct ipc_namespace *ns;
 	static const struct ipc_ops shm_ops = {
@@ -779,6 +776,11 @@ SYSCALL_DEFINE3(shmget, key_t, key, size_t, size, int, shmflg)
 	shm_params.u.size = size;
 
 	return ipcget(ns, &shm_ids(ns), &shm_ops, &shm_params);
+}
+
+SYSCALL_DEFINE3(shmget, key_t, key, size_t, size, int, shmflg)
+{
+	return ksys_shmget(key, size, shmflg);
 }
 
 static inline unsigned long copy_shmid_to_user(void __user *buf, struct shmid64_ds *in, int version)
@@ -941,7 +943,7 @@ static int shmctl_down(struct ipc_namespace *ns, int shmid, int cmd,
 
 	shp = container_of(ipcp, struct shmid_kernel, shm_perm);
 
-	err = security_shm_shmctl(shp, cmd);
+	err = security_shm_shmctl(&shp->shm_perm, cmd);
 	if (err)
 		goto out_unlock1;
 
@@ -1039,7 +1041,7 @@ static int shmctl_stat(struct ipc_namespace *ns, int shmid,
 	if (ipcperms(ns, &shp->shm_perm, S_IRUGO))
 		goto out_unlock;
 
-	err = security_shm_shmctl(shp, cmd);
+	err = security_shm_shmctl(&shp->shm_perm, cmd);
 	if (err)
 		goto out_unlock;
 
@@ -1074,7 +1076,7 @@ static int shmctl_do_lock(struct ipc_namespace *ns, int shmid, int cmd)
 	}
 
 	audit_ipc_obj(&(shp->shm_perm));
-	err = security_shm_shmctl(shp, cmd);
+	err = security_shm_shmctl(&shp->shm_perm, cmd);
 	if (err)
 		goto out_unlock1;
 
@@ -1136,7 +1138,7 @@ out_unlock1:
 	return err;
 }
 
-SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, struct shmid_ds __user *, buf)
+long ksys_shmctl(int shmid, int cmd, struct shmid_ds __user *buf)
 {
 	int err, version;
 	struct ipc_namespace *ns;
@@ -1188,6 +1190,11 @@ SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, struct shmid_ds __user *, buf)
 	default:
 		return -EINVAL;
 	}
+}
+
+SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, struct shmid_ds __user *, buf)
+{
+	return ksys_shmctl(shmid, cmd, buf);
 }
 
 #ifdef CONFIG_COMPAT
@@ -1309,7 +1316,7 @@ static int copy_compat_shmid_from_user(struct shmid64_ds *out, void __user *buf,
 	}
 }
 
-COMPAT_SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, void __user *, uptr)
+long compat_ksys_shmctl(int shmid, int cmd, void __user *uptr)
 {
 	struct ipc_namespace *ns;
 	struct shmid64_ds sem64;
@@ -1363,6 +1370,11 @@ COMPAT_SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, void __user *, uptr)
 		return -EINVAL;
 	}
 	return err;
+}
+
+COMPAT_SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, void __user *, uptr)
+{
+	return compat_ksys_shmctl(shmid, cmd, uptr);
 }
 #endif
 
@@ -1447,7 +1459,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 	if (ipcperms(ns, &shp->shm_perm, acc_mode))
 		goto out_unlock;
 
-	err = security_shm_shmat(shp, shmaddr, shmflg);
+	err = security_shm_shmat(&shp->shm_perm, shmaddr, shmflg);
 	if (err)
 		goto out_unlock;
 
@@ -1585,7 +1597,7 @@ COMPAT_SYSCALL_DEFINE3(shmat, int, shmid, compat_uptr_t, shmaddr, int, shmflg)
  * detach and kill segment if marked destroyed.
  * The work is done in shm_close.
  */
-SYSCALL_DEFINE1(shmdt, char __user *, shmaddr)
+long ksys_shmdt(char __user *shmaddr)
 {
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma;
@@ -1690,6 +1702,11 @@ SYSCALL_DEFINE1(shmdt, char __user *, shmaddr)
 
 	up_write(&mm->mmap_sem);
 	return retval;
+}
+
+SYSCALL_DEFINE1(shmdt, char __user *, shmaddr)
+{
+	return ksys_shmdt(shmaddr);
 }
 
 #ifdef CONFIG_PROC_FS

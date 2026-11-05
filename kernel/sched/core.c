@@ -16,6 +16,7 @@
 #include <linux/init_task.h>
 #include <linux/context_tracking.h>
 #include <linux/rcupdate_wait.h>
+#include <linux/compat.h>
 
 #include <linux/blkdev.h>
 #include <linux/kcov.h>
@@ -2319,7 +2320,7 @@ void set_numabalancing_state(bool enabled)
 
 #ifdef CONFIG_PROC_SYSCTL
 int sysctl_numa_balancing(struct ctl_table *table, int write,
-			 void __user *buffer, size_t *lenp, loff_t *ppos)
+			  void *buffer, size_t *lenp, loff_t *ppos)
 {
 	struct ctl_table t;
 	int err;
@@ -2393,8 +2394,8 @@ static void __init init_schedstats(void)
 }
 
 #ifdef CONFIG_PROC_SYSCTL
-int sysctl_schedstats(struct ctl_table *table, int write,
-			 void __user *buffer, size_t *lenp, loff_t *ppos)
+int sysctl_schedstats(struct ctl_table *table, int write, void *buffer,
+		size_t *lenp, loff_t *ppos)
 {
 	struct ctl_table t;
 	int err;
@@ -2845,6 +2846,8 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
+
+	calculate_sigpending();
 }
 
 /*
@@ -4971,7 +4974,7 @@ SYSCALL_DEFINE3(sched_getaffinity, pid_t, pid, unsigned int, len,
  *
  * Return: 0.
  */
-SYSCALL_DEFINE0(sched_yield)
+static void do_sched_yield(void)
 {
 	struct rq_flags rf;
 	struct rq *rq;
@@ -4986,7 +4989,11 @@ SYSCALL_DEFINE0(sched_yield)
 	sched_preempt_enable_no_resched();
 
 	schedule();
+}
 
+SYSCALL_DEFINE0(sched_yield)
+{
+	do_sched_yield();
 	return 0;
 }
 
@@ -5069,7 +5076,7 @@ EXPORT_SYMBOL(__cond_resched_softirq);
 void __sched yield(void)
 {
 	set_current_state(TASK_RUNNING);
-	sys_sched_yield();
+	do_sched_yield();
 }
 EXPORT_SYMBOL(yield);
 
@@ -5253,13 +5260,11 @@ SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
  * Return: On success, 0 and the timeslice is in @interval. Otherwise,
  * an error code.
  */
-SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
-		struct timespec __user *, interval)
+static int sched_rr_get_interval(pid_t pid, struct timespec64 *t)
 {
 	struct task_struct *p;
 	unsigned int time_slice;
 	struct rq_flags rf;
-	struct timespec t;
 	struct rq *rq;
 	int retval;
 
@@ -5283,14 +5288,39 @@ SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
 	task_rq_unlock(rq, p, &rf);
 
 	rcu_read_unlock();
-	jiffies_to_timespec(time_slice, &t);
-	retval = copy_to_user(interval, &t, sizeof(t)) ? -EFAULT : 0;
-	return retval;
+	jiffies_to_timespec64(time_slice, t);
+	return 0;
 
 out_unlock:
 	rcu_read_unlock();
 	return retval;
 }
+
+SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
+		struct timespec __user *, interval)
+{
+	struct timespec64 t;
+	int retval = sched_rr_get_interval(pid, &t);
+
+	if (retval == 0)
+		retval = put_timespec64(&t, interval);
+
+	return retval;
+}
+
+#ifdef CONFIG_COMPAT
+COMPAT_SYSCALL_DEFINE2(sched_rr_get_interval,
+		       compat_pid_t, pid,
+		       struct compat_timespec __user *, interval)
+{
+	struct timespec64 t;
+	int retval = sched_rr_get_interval(pid, &t);
+
+	if (retval == 0)
+		retval = compat_put_timespec64(&t, interval);
+	return retval;
+}
+#endif
 
 void sched_show_task(struct task_struct *p)
 {

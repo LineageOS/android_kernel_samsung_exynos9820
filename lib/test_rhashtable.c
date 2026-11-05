@@ -79,7 +79,6 @@ static struct rhashtable_params test_rht_params = {
 	.key_offset = offsetof(struct test_obj, value),
 	.key_len = sizeof(struct test_obj_val),
 	.hashfn = jhash,
-	.nulls_base = (3U << RHT_BASE_SHIFT),
 };
 
 static struct semaphore prestart_sem;

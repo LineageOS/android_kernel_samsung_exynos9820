@@ -29,25 +29,8 @@
 
 /*
  * The end of the chain is marked with a special nulls marks which has
- * the following format:
- *
- * +-------+-----------------------------------------------------+-+
- * | Base  |                      Hash                           |1|
- * +-------+-----------------------------------------------------+-+
- *
- * Base (4 bits) : Reserved to distinguish between multiple tables.
- *                 Specified via &struct rhashtable_params.nulls_base.
- * Hash (27 bits): Full hash (unmasked) of first element added to bucket
- * 1 (1 bit)     : Nulls marker (always set)
- *
- * The remaining bits of the next pointer remain unused for now.
+ * the least significant bit set.
  */
-#define RHT_BASE_BITS		4
-#define RHT_HASH_BITS		27
-#define RHT_BASE_SHIFT		RHT_HASH_BITS
-
-/* Base bits plus 1 bit for nulls marker */
-#define RHT_HASH_RESERVED_SPACE	(RHT_BASE_BITS + 1)
 
 /* Maximum chain length before rehash
  *
@@ -129,7 +112,6 @@ struct rhashtable;
  * @min_size: Minimum size while shrinking
  * @locks_mul: Number of bucket locks to allocate per cpu (default: 32)
  * @automatic_shrinking: Enable automatic shrinking of tables
- * @nulls_base: Base value to generate nulls marker
  * @hashfn: Hash function (default: jhash2 if !(key_len % 4), or jhash)
  * @obj_hashfn: Function to hash object
  * @obj_cmpfn: Function to compare key with object
@@ -143,7 +125,6 @@ struct rhashtable_params {
 	u16			min_size;
 	bool			automatic_shrinking;
 	u8			locks_mul;
-	u32			nulls_base;
 	rht_hashfn_t		hashfn;
 	rht_obj_hashfn_t	obj_hashfn;
 	rht_obj_cmpfn_t		obj_cmpfn;
@@ -209,22 +190,12 @@ struct rhashtable_iter {
 	unsigned int skip;
 };
 
-static inline unsigned long rht_marker(const struct rhashtable *ht, u32 hash)
-{
-	return NULLS_MARKER(ht->p.nulls_base + hash);
-}
-
 #define INIT_RHT_NULLS_HEAD(ptr, ht, hash) \
-	((ptr) = (typeof(ptr)) rht_marker(ht, hash))
+	((ptr) = (typeof(ptr)) NULLS_MARKER(0))
 
 static inline bool rht_is_a_nulls(const struct rhash_head *ptr)
 {
 	return ((unsigned long) ptr & 1);
-}
-
-static inline unsigned long rht_get_nulls_value(const struct rhash_head *ptr)
-{
-	return ((unsigned long) ptr) >> 1;
 }
 
 static inline void *rht_obj(const struct rhashtable *ht,
@@ -236,7 +207,7 @@ static inline void *rht_obj(const struct rhashtable *ht,
 static inline unsigned int rht_bucket_index(const struct bucket_table *tbl,
 					    unsigned int hash)
 {
-	return (hash >> RHT_HASH_RESERVED_SPACE) & (tbl->size - 1);
+	return hash & (tbl->size - 1);
 }
 
 static inline unsigned int rht_key_hashfn(

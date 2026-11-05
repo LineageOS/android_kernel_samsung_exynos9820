@@ -180,7 +180,7 @@ static int process_access_response(struct fsnotify_group *group,
 	 * userspace can send a valid response or we will clean it up after the
 	 * timeout
 	 */
-	switch (response) {
+	switch (response & ~FAN_AUDIT) {
 	case FAN_ALLOW:
 	case FAN_DENY:
 		break;
@@ -189,6 +189,9 @@ static int process_access_response(struct fsnotify_group *group,
 	}
 
 	if (fd < 0)
+		return -EINVAL;
+
+	if ((response & FAN_AUDIT) && !group->fanotify_data.audit)
 		return -EINVAL;
 
 	event = dequeue_event(group, fd);
@@ -722,7 +725,11 @@ SYSCALL_DEFINE2(fanotify_init, unsigned int, flags, unsigned int, event_f_flags)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
+#ifdef CONFIG_AUDITSYSCALL
+	if (flags & ~(FAN_ALL_INIT_FLAGS | FAN_ENABLE_AUDIT))
+#else
 	if (flags & ~FAN_ALL_INIT_FLAGS)
+#endif
 		return -EINVAL;
 
 	if (event_f_flags & ~FANOTIFY_INIT_ALL_EVENT_F_BITS)
@@ -806,6 +813,13 @@ SYSCALL_DEFINE2(fanotify_init, unsigned int, flags, unsigned int, event_f_flags)
 		group->fanotify_data.max_marks = FANOTIFY_DEFAULT_MAX_MARKS;
 	}
 
+	if (flags & FAN_ENABLE_AUDIT) {
+		fd = -EPERM;
+		if (!capable(CAP_AUDIT_WRITE))
+			goto out_destroy_group;
+		group->fanotify_data.audit = true;
+	}
+
 	fd = anon_inode_getfd("[fanotify]", &fanotify_fops, group, f_flags);
 	if (fd < 0)
 		goto out_destroy_group;
@@ -817,9 +831,8 @@ out_destroy_group:
 	return fd;
 }
 
-SYSCALL_DEFINE5(fanotify_mark, int, fanotify_fd, unsigned int, flags,
-			      __u64, mask, int, dfd,
-			      const char  __user *, pathname)
+static int do_fanotify_mark(int fanotify_fd, unsigned int flags, __u64 mask,
+			    int dfd, const char  __user *pathname)
 {
 	struct inode *inode = NULL;
 	struct vfsmount *mnt = NULL;
@@ -925,13 +938,20 @@ fput_and_out:
 	return ret;
 }
 
+SYSCALL_DEFINE5(fanotify_mark, int, fanotify_fd, unsigned int, flags,
+			      __u64, mask, int, dfd,
+			      const char  __user *, pathname)
+{
+	return do_fanotify_mark(fanotify_fd, flags, mask, dfd, pathname);
+}
+
 #ifdef CONFIG_COMPAT
 COMPAT_SYSCALL_DEFINE6(fanotify_mark,
 				int, fanotify_fd, unsigned int, flags,
 				__u32, mask0, __u32, mask1, int, dfd,
 				const char  __user *, pathname)
 {
-	return sys_fanotify_mark(fanotify_fd, flags,
+	return do_fanotify_mark(fanotify_fd, flags,
 #ifdef __BIG_ENDIAN
 				((__u64)mask0 << 32) | mask1,
 #else

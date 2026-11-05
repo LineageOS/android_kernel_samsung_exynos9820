@@ -57,7 +57,7 @@ asmlinkage long sys32_truncate64(const char __user * path, unsigned long high, u
 	if ((int)high < 0)
 		return -EINVAL;
 	else
-		return sys_truncate(path, (high << 32) | low);
+		return ksys_truncate(path, (high << 32) | low);
 }
 
 asmlinkage long sys32_ftruncate64(unsigned int fd, unsigned long high, unsigned long low)
@@ -65,7 +65,7 @@ asmlinkage long sys32_ftruncate64(unsigned int fd, unsigned long high, unsigned 
 	if ((int)high < 0)
 		return -EINVAL;
 	else
-		return sys_ftruncate(fd, (high << 32) | low);
+		return ksys_ftruncate(fd, (high << 32) | low);
 }
 
 static int cp_compat_stat64(struct kstat *stat,
@@ -160,7 +160,6 @@ COMPAT_SYSCALL_DEFINE5(rt_sigaction, int, sig,
 {
         struct k_sigaction new_ka, old_ka;
         int ret;
-	compat_sigset_t set32;
 
         /* XXX: Don't preclude handling different sized sigset_t's.  */
         if (sigsetsize != sizeof(compat_sigset_t))
@@ -172,8 +171,7 @@ COMPAT_SYSCALL_DEFINE5(rt_sigaction, int, sig,
 		new_ka.ka_restorer = restorer;
 		ret = get_user(u_handler, &act->sa_handler);
 		new_ka.sa.sa_handler =  compat_ptr(u_handler);
-		ret |= copy_from_user(&set32, &act->sa_mask, sizeof(compat_sigset_t));
-		sigset_from_compat(&new_ka.sa.sa_mask, &set32);
+		ret |= get_compat_sigset(&new_ka.sa.sa_mask, &act->sa_mask);
 		ret |= get_user(new_ka.sa.sa_flags, &act->sa_flags);
 		ret |= get_user(u_restorer, &act->sa_restorer);
 		new_ka.sa.sa_restorer = compat_ptr(u_restorer);
@@ -184,9 +182,9 @@ COMPAT_SYSCALL_DEFINE5(rt_sigaction, int, sig,
 	ret = do_sigaction(sig, act ? &new_ka : NULL, oact ? &old_ka : NULL);
 
 	if (!ret && oact) {
-		sigset_to_compat(&set32, &old_ka.sa.sa_mask);
 		ret = put_user(ptr_to_compat(old_ka.sa.sa_handler), &oact->sa_handler);
-		ret |= copy_to_user(&oact->sa_mask, &set32, sizeof(compat_sigset_t));
+		ret |= put_compat_sigset(&oact->sa_mask, &old_ka.sa.sa_mask,
+					 sizeof(oact->sa_mask));
 		ret |= put_user(old_ka.sa.sa_flags, &oact->sa_flags);
 		ret |= put_user(ptr_to_compat(old_ka.sa.sa_restorer), &oact->sa_restorer);
 		if (ret)
@@ -202,7 +200,7 @@ asmlinkage compat_ssize_t sys32_pread64(unsigned int fd,
 					unsigned long poshi,
 					unsigned long poslo)
 {
-	return sys_pread64(fd, ubuf, count, (poshi << 32) | poslo);
+	return ksys_pread64(fd, ubuf, count, (poshi << 32) | poslo);
 }
 
 asmlinkage compat_ssize_t sys32_pwrite64(unsigned int fd,
@@ -211,7 +209,7 @@ asmlinkage compat_ssize_t sys32_pwrite64(unsigned int fd,
 					 unsigned long poshi,
 					 unsigned long poslo)
 {
-	return sys_pwrite64(fd, ubuf, count, (poshi << 32) | poslo);
+	return ksys_pwrite64(fd, ubuf, count, (poshi << 32) | poslo);
 }
 
 asmlinkage long compat_sys_readahead(int fd,
@@ -219,7 +217,7 @@ asmlinkage long compat_sys_readahead(int fd,
 				     unsigned long offlo,
 				     compat_size_t count)
 {
-	return sys_readahead(fd, (offhi << 32) | offlo, count);
+	return ksys_readahead(fd, (offhi << 32) | offlo, count);
 }
 
 long compat_sys_fadvise64(int fd,
@@ -227,7 +225,7 @@ long compat_sys_fadvise64(int fd,
 			  unsigned long offlo,
 			  compat_size_t len, int advice)
 {
-	return sys_fadvise64_64(fd, (offhi << 32) | offlo, len, advice);
+	return ksys_fadvise64_64(fd, (offhi << 32) | offlo, len, advice);
 }
 
 long compat_sys_fadvise64_64(int fd,
@@ -235,15 +233,15 @@ long compat_sys_fadvise64_64(int fd,
 			     unsigned long lenhi, unsigned long lenlo,
 			     int advice)
 {
-	return sys_fadvise64_64(fd,
-				(offhi << 32) | offlo,
-				(lenhi << 32) | lenlo,
-				advice);
+	return ksys_fadvise64_64(fd,
+				 (offhi << 32) | offlo,
+				 (lenhi << 32) | lenlo,
+				 advice);
 }
 
 long sys32_sync_file_range(unsigned int fd, unsigned long off_high, unsigned long off_low, unsigned long nb_high, unsigned long nb_low, unsigned int flags)
 {
-	return sys_sync_file_range(fd,
+	return ksys_sync_file_range(fd,
 				   (off_high << 32) | off_low,
 				   (nb_high << 32) | nb_low,
 				   flags);
@@ -252,6 +250,6 @@ long sys32_sync_file_range(unsigned int fd, unsigned long off_high, unsigned lon
 asmlinkage long compat_sys_fallocate(int fd, int mode, u32 offhi, u32 offlo,
 				     u32 lenhi, u32 lenlo)
 {
-	return sys_fallocate(fd, mode, ((loff_t)offhi << 32) | offlo,
-			     ((loff_t)lenhi << 32) | lenlo);
+	return ksys_fallocate(fd, mode, ((loff_t)offhi << 32) | offlo,
+			      ((loff_t)lenhi << 32) | lenlo);
 }
