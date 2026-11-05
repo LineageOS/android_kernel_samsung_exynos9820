@@ -80,9 +80,6 @@ static void proc_cleanup_work(struct work_struct *work)
 	pid_ns_release_proc(ns);
 }
 
-/* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
-#define MAX_PID_NS_LEVEL 32
-
 static struct ucounts *inc_pid_namespaces(struct user_namespace *ns)
 {
 	return inc_ucount(ns, current_euid(), UCOUNT_PID_NAMESPACES);
@@ -242,16 +239,16 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
 
 	/*
 	 * Reap the EXIT_ZOMBIE children we had before we ignored SIGCHLD.
-	 * sys_wait4() will also block until our children traced from the
+	 * kernel_wait4() will also block until our children traced from the
 	 * parent namespace are detached and become EXIT_DEAD.
 	 */
 	do {
 		clear_thread_flag(TIF_SIGPENDING);
-		rc = sys_wait4(-1, NULL, __WALL, NULL);
+		rc = kernel_wait4(-1, NULL, __WALL, NULL);
 	} while (rc != -ECHILD);
 
 	/*
-	 * sys_wait4() above can't reap the EXIT_DEAD children but we do not
+	 * kernel_wait4() above can't reap the EXIT_DEAD children but we do not
 	 * really care, we could reparent them to the global init. We could
 	 * exit and reap ->child_reaper even if it is not the last thread in
 	 * this pid_ns, free_pid(nr_hashed == 0) calls proc_cleanup_work(),
@@ -289,7 +286,7 @@ static int pid_ns_ctl_handler(struct ctl_table *table, int write,
 	struct ctl_table tmp = *table;
 	int ret, next;
 
-	if (write && !ns_capable(pid_ns->user_ns, CAP_SYS_ADMIN))
+	if (write && !checkpoint_restore_ns_capable(pid_ns->user_ns))
 		return -EPERM;
 
 	/*

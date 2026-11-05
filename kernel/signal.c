@@ -187,6 +187,17 @@ void recalc_sigpending(void)
 
 }
 
+void calculate_sigpending(void)
+{
+	/* Have any signals or users of TIF_SIGPENDING been delayed
+	 * until after fork?
+	 */
+	spin_lock_irq(&current->sighand->siglock);
+	set_tsk_thread_flag(current, TIF_SIGPENDING);
+	recalc_sigpending();
+	spin_unlock_irq(&current->sighand->siglock);
+}
+
 /* Given the mask, find the first available signal that should be serviced. */
 
 #define SYNCHRONOUS_MASK \
@@ -375,6 +386,20 @@ static bool task_participate_group_stop(struct task_struct *task)
 		return true;
 	}
 	return false;
+}
+
+void task_join_group_stop(struct task_struct *task)
+{
+	/* Have the new thread join an on-going signal group stop */
+	unsigned long jobctl = current->jobctl;
+	if (jobctl & JOBCTL_STOP_PENDING) {
+		struct signal_struct *sig = current->signal;
+		unsigned long signr = jobctl & JOBCTL_STOP_SIGMASK;
+		unsigned long gstop = JOBCTL_STOP_PENDING | JOBCTL_STOP_CONSUME;
+		if (task_set_jobctl_pending(task, signr | gstop)) {
+			sig->group_stop_count++;
+		}
+	}
 }
 
 /*
@@ -953,7 +978,7 @@ static inline int wants_signal(int sig, struct task_struct *p)
 	return task_curr(p) || !signal_pending(p);
 }
 
-static void complete_signal(int sig, struct task_struct *p, int group)
+static void complete_signal(int sig, struct task_struct *p, enum pid_type type)
 {
 	struct signal_struct *signal = p->signal;
 	struct task_struct *t;
@@ -966,7 +991,7 @@ static void complete_signal(int sig, struct task_struct *p, int group)
 	 */
 	if (wants_signal(sig, p))
 		t = p;
-	else if (!group || thread_group_empty(p))
+	else if ((type == PIDTYPE_PID) || thread_group_empty(p))
 		/*
 		 * There is just one thread and it does not need to be woken.
 		 * It will dequeue unblocked signals before it runs again.
@@ -1056,7 +1081,7 @@ static inline void userns_fixup_signal_uid(struct siginfo *info, struct task_str
 #endif
 
 static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
-			int group, int from_ancestor_ns)
+			enum pid_type type, int from_ancestor_ns)
 {
 	struct sigpending *pending;
 	struct sigqueue *q;
@@ -1070,7 +1095,7 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 			from_ancestor_ns || (info == SEND_SIG_PRIV) || (info == SEND_SIG_FORCED)))
 		goto ret;
 
-	pending = group ? &t->signal->shared_pending : &t->pending;
+	pending = (type != PIDTYPE_PID) ? &t->signal->shared_pending : &t->pending;
 	/*
 	 * Short-circuit ignored signals and support queuing
 	 * exactly one non-rt signal, so that we can get more
@@ -1152,14 +1177,29 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 out_set:
 	signalfd_notify(t, sig);
 	sigaddset(&pending->signal, sig);
-	complete_signal(sig, t, group);
+
+	/* Let multiprocess signals appear after on-going forks */
+	if (type > PIDTYPE_TGID) {
+		struct multiprocess_signals *delayed;
+		hlist_for_each_entry(delayed, &t->signal->multiprocess, node) {
+			sigset_t *signal = &delayed->signal;
+			/* Can't queue both a stop and a continue signal */
+			if (sig == SIGCONT)
+				sigdelsetmask(signal, SIG_KERNEL_STOP_MASK);
+			else if (sig_kernel_stop(sig))
+				sigdelset(signal, SIGCONT);
+			sigaddset(signal, sig);
+		}
+	}
+
+	complete_signal(sig, t, type);
 ret:
-	trace_signal_generate(sig, info, t, group, result);
+	trace_signal_generate(sig, info, t, type != PIDTYPE_PID, result);
 	return ret;
 }
 
 static int send_signal(int sig, struct siginfo *info, struct task_struct *t,
-			int group)
+			enum pid_type type)
 {
 	int from_ancestor_ns = 0;
 
@@ -1168,7 +1208,7 @@ static int send_signal(int sig, struct siginfo *info, struct task_struct *t,
 			   !task_pid_nr_ns(current, task_active_pid_ns(t));
 #endif
 
-	return __send_signal(sig, info, t, group, from_ancestor_ns);
+	return __send_signal(sig, info, t, type, from_ancestor_ns);
 }
 
 static void print_fatal_signal(int signr)
@@ -1207,17 +1247,17 @@ __setup("print-fatal-signals=", setup_print_fatal_signals);
 int
 __group_send_sig_info(int sig, struct siginfo *info, struct task_struct *p)
 {
-	return send_signal(sig, info, p, 1);
+	return send_signal(sig, info, p, PIDTYPE_TGID);
 }
 
 static int
 specific_send_sig_info(int sig, struct siginfo *info, struct task_struct *t)
 {
-	return send_signal(sig, info, t, 0);
+	return send_signal(sig, info, t, PIDTYPE_PID);
 }
 
 int do_send_sig_info(int sig, struct siginfo *info, struct task_struct *p,
-			bool group)
+			enum pid_type type)
 {
 	unsigned long flags;
 	int ret = -ESRCH;
@@ -1233,7 +1273,7 @@ int do_send_sig_info(int sig, struct siginfo *info, struct task_struct *p,
 #endif
 
 	if (lock_task_sighand(p, &flags)) {
-		ret = send_signal(sig, info, p, group);
+		ret = send_signal(sig, info, p, type);
 		unlock_task_sighand(p, &flags);
 	}
 
@@ -1360,7 +1400,7 @@ int group_send_sig_info(int sig, struct siginfo *info, struct task_struct *p,
 	rcu_read_unlock();
 
 	if (!ret && sig)
-		ret = do_send_sig_info(sig, info, p, true);
+		ret = do_send_sig_info(sig, info, p, type);
 
 	return ret;
 }
@@ -1453,7 +1493,7 @@ int kill_pid_info_as_cred(int sig, struct siginfo *info, struct pid *pid,
 
 	if (sig) {
 		if (lock_task_sighand(p, &flags)) {
-			ret = __send_signal(sig, info, p, 1, 0);
+			ret = __send_signal(sig, info, p, PIDTYPE_TGID, 0);
 			unlock_task_sighand(p, &flags);
 		} else
 			ret = -ESRCH;
@@ -1524,7 +1564,7 @@ int send_sig_info(int sig, struct siginfo *info, struct task_struct *p)
 	if (!valid_signal(sig))
 		return -EINVAL;
 
-	return do_send_sig_info(sig, info, p, false);
+	return do_send_sig_info(sig, info, p, PIDTYPE_PID);
 }
 
 #define __si_special(priv) \
@@ -1624,10 +1664,11 @@ void sigqueue_free(struct sigqueue *q)
 		__sigqueue_free(q);
 }
 
-int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
+int send_sigqueue(struct sigqueue *q, struct pid *pid, enum pid_type type)
 {
 	int sig = q->info.si_signo;
 	struct sigpending *pending;
+	struct task_struct *t;
 	unsigned long flags;
 	int ret, result;
 
@@ -1637,7 +1678,9 @@ int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
 		return 0;
 
 	ret = -1;
-	if (!likely(lock_task_sighand(t, &flags)))
+	rcu_read_lock();
+	t = pid_task(pid, type);
+	if (!t || !likely(lock_task_sighand(t, &flags)))
 		goto ret;
 
 	ret = 1; /* the signal is ignored */
@@ -1658,15 +1701,16 @@ int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
 	q->info.si_overrun = 0;
 
 	signalfd_notify(t, sig);
-	pending = group ? &t->signal->shared_pending : &t->pending;
+	pending = (type != PIDTYPE_PID) ? &t->signal->shared_pending : &t->pending;
 	list_add_tail(&q->list, &pending->list);
 	sigaddset(&pending->signal, sig);
-	complete_signal(sig, t, group);
+	complete_signal(sig, t, type);
 	result = TRACE_SIGNAL_DELIVERED;
 out:
-	trace_signal_generate(sig, &q->info, t, group, result);
+	trace_signal_generate(sig, &q->info, t, type != PIDTYPE_PID, result);
 	unlock_task_sighand(t, &flags);
 ret:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -2770,7 +2814,6 @@ SYSCALL_DEFINE4(rt_sigprocmask, int, how, sigset_t __user *, nset,
 COMPAT_SYSCALL_DEFINE4(rt_sigprocmask, int, how, compat_sigset_t __user *, nset,
 		compat_sigset_t __user *, oset, compat_size_t, sigsetsize)
 {
-#ifdef __BIG_ENDIAN
 	sigset_t old_set = current->blocked;
 
 	/* XXX: Don't preclude handling different sized sigset_t's.  */
@@ -2778,38 +2821,22 @@ COMPAT_SYSCALL_DEFINE4(rt_sigprocmask, int, how, compat_sigset_t __user *, nset,
 		return -EINVAL;
 
 	if (nset) {
-		compat_sigset_t new32;
 		sigset_t new_set;
 		int error;
-		if (copy_from_user(&new32, nset, sizeof(compat_sigset_t)))
+		if (get_compat_sigset(&new_set, nset))
 			return -EFAULT;
-
-		sigset_from_compat(&new_set, &new32);
 		sigdelsetmask(&new_set, sigmask(SIGKILL)|sigmask(SIGSTOP));
 
 		error = sigprocmask(how, &new_set, NULL);
 		if (error)
 			return error;
 	}
-	if (oset) {
-		compat_sigset_t old32;
-		sigset_to_compat(&old32, &old_set);
-		if (copy_to_user(oset, &old32, sizeof(compat_sigset_t)))
-			return -EFAULT;
-	}
-	return 0;
-#else
-	return sys_rt_sigprocmask(how, (sigset_t __user *)nset,
-				  (sigset_t __user *)oset, sigsetsize);
-#endif
+	return oset ? put_compat_sigset(oset, &old_set, sizeof(*oset)) : 0;
 }
 #endif
 
-static int do_sigpending(void *set, unsigned long sigsetsize)
+static int do_sigpending(sigset_t *set)
 {
-	if (sigsetsize > sizeof(sigset_t))
-		return -EINVAL;
-
 	spin_lock_irq(&current->sighand->siglock);
 	sigorsets(set, &current->pending.signal,
 		  &current->signal->shared_pending.signal);
@@ -2829,7 +2856,12 @@ static int do_sigpending(void *set, unsigned long sigsetsize)
 SYSCALL_DEFINE2(rt_sigpending, sigset_t __user *, uset, size_t, sigsetsize)
 {
 	sigset_t set;
-	int err = do_sigpending(&set, sigsetsize);
+	int err;
+
+	if (sigsetsize > sizeof(*uset))
+		return -EINVAL;
+
+	err = do_sigpending(&set);
 	if (!err && copy_to_user(uset, &set, sigsetsize))
 		err = -EFAULT;
 	return err;
@@ -2839,20 +2871,16 @@ SYSCALL_DEFINE2(rt_sigpending, sigset_t __user *, uset, size_t, sigsetsize)
 COMPAT_SYSCALL_DEFINE2(rt_sigpending, compat_sigset_t __user *, uset,
 		compat_size_t, sigsetsize)
 {
-#ifdef __BIG_ENDIAN
 	sigset_t set;
-	int err = do_sigpending(&set, sigsetsize);
-	if (!err) {
-		compat_sigset_t set32;
-		sigset_to_compat(&set32, &set);
-		/* we can get here only if sigsetsize <= sizeof(set) */
-		if (copy_to_user(uset, &set32, sigsetsize))
-			err = -EFAULT;
-	}
+	int err;
+
+	if (sigsetsize > sizeof(*uset))
+		return -EINVAL;
+
+	err = do_sigpending(&set);
+	if (!err)
+		err = put_compat_sigset(uset, &set, sigsetsize);
 	return err;
-#else
-	return sys_rt_sigpending((sigset_t __user *)uset, sigsetsize);
-#endif
 }
 #endif
 
@@ -3086,7 +3114,6 @@ COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait, compat_sigset_t __user *, uthese,
 		struct compat_siginfo __user *, uinfo,
 		struct compat_timespec __user *, uts, compat_size_t, sigsetsize)
 {
-	compat_sigset_t s32;
 	sigset_t s;
 	struct timespec t;
 	siginfo_t info;
@@ -3095,9 +3122,8 @@ COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait, compat_sigset_t __user *, uthese,
 	if (sigsetsize != sizeof(sigset_t))
 		return -EINVAL;
 
-	if (copy_from_user(&s32, uthese, sizeof(compat_sigset_t)))
+	if (get_compat_sigset(&s, uthese))
 		return -EFAULT;
-	sigset_from_compat(&s, &s32);
 
 	if (uts) {
 		if (compat_get_timespec(&t, uts))
@@ -3267,7 +3293,7 @@ do_send_specific(pid_t tgid, pid_t pid, int sig, struct siginfo *info)
 		 * probe.  No signal is actually delivered.
 		 */
 		if (!error && sig) {
-			error = do_send_sig_info(sig, info, p, false);
+			error = do_send_sig_info(sig, info, p, PIDTYPE_PID);
 			/*
 			 * If lock_task_sighand() failed we pretend the task
 			 * dies after receiving the signal. The window is tiny,
@@ -3571,9 +3597,8 @@ int __save_altstack(stack_t __user *uss, unsigned long sp)
 }
 
 #ifdef CONFIG_COMPAT
-COMPAT_SYSCALL_DEFINE2(sigaltstack,
-			const compat_stack_t __user *, uss_ptr,
-			compat_stack_t __user *, uoss_ptr)
+static int do_compat_sigaltstack(const compat_stack_t __user *uss_ptr,
+				 compat_stack_t __user *uoss_ptr)
 {
 	stack_t uss, uoss;
 	int ret;
@@ -3601,9 +3626,16 @@ COMPAT_SYSCALL_DEFINE2(sigaltstack,
 	return ret;
 }
 
+COMPAT_SYSCALL_DEFINE2(sigaltstack,
+			const compat_stack_t __user *, uss_ptr,
+			compat_stack_t __user *, uoss_ptr)
+{
+	return do_compat_sigaltstack(uss_ptr, uoss_ptr);
+}
+
 int compat_restore_altstack(const compat_stack_t __user *uss)
 {
-	int err = compat_sys_sigaltstack(uss, NULL);
+	int err = do_compat_sigaltstack(uss, NULL);
 	/* squash all but -EFAULT for now */
 	return err == -EFAULT ? err : 0;
 }
@@ -3628,25 +3660,30 @@ int __compat_save_altstack(compat_stack_t __user *uss, unsigned long sp)
 
 /**
  *  sys_sigpending - examine pending signals
- *  @set: where mask of pending signal is returned
+ *  @uset: where mask of pending signal is returned
  */
-SYSCALL_DEFINE1(sigpending, old_sigset_t __user *, set)
+SYSCALL_DEFINE1(sigpending, old_sigset_t __user *, uset)
 {
-	return sys_rt_sigpending((sigset_t __user *)set, sizeof(old_sigset_t)); 
+	sigset_t set;
+	int err;
+
+	if (sizeof(old_sigset_t) > sizeof(*uset))
+		return -EINVAL;
+
+	err = do_sigpending(&set);
+	if (!err && copy_to_user(uset, &set, sizeof(old_sigset_t)))
+		err = -EFAULT;
+	return err;
 }
 
 #ifdef CONFIG_COMPAT
 COMPAT_SYSCALL_DEFINE1(sigpending, compat_old_sigset_t __user *, set32)
 {
-#ifdef __BIG_ENDIAN
 	sigset_t set;
-	int err = do_sigpending(&set, sizeof(set.sig[0]));
+	int err = do_sigpending(&set);
 	if (!err)
 		err = put_user(set.sig[0], set32);
 	return err;
-#else
-	return sys_rt_sigpending((sigset_t __user *)set32, sizeof(*set32));
-#endif
 }
 #endif
 
@@ -3744,7 +3781,6 @@ COMPAT_SYSCALL_DEFINE4(rt_sigaction, int, sig,
 		compat_size_t, sigsetsize)
 {
 	struct k_sigaction new_ka, old_ka;
-	compat_sigset_t mask;
 #ifdef __ARCH_HAS_SA_RESTORER
 	compat_uptr_t restorer;
 #endif
@@ -3762,19 +3798,18 @@ COMPAT_SYSCALL_DEFINE4(rt_sigaction, int, sig,
 		ret |= get_user(restorer, &act->sa_restorer);
 		new_ka.sa.sa_restorer = compat_ptr(restorer);
 #endif
-		ret |= copy_from_user(&mask, &act->sa_mask, sizeof(mask));
+		ret |= get_compat_sigset(&new_ka.sa.sa_mask, &act->sa_mask);
 		ret |= get_user(new_ka.sa.sa_flags, &act->sa_flags);
 		if (ret)
 			return -EFAULT;
-		sigset_from_compat(&new_ka.sa.sa_mask, &mask);
 	}
 
 	ret = do_sigaction(sig, act ? &new_ka : NULL, oact ? &old_ka : NULL);
 	if (!ret && oact) {
-		sigset_to_compat(&mask, &old_ka.sa.sa_mask);
 		ret = put_user(ptr_to_compat(old_ka.sa.sa_handler), 
 			       &oact->sa_handler);
-		ret |= copy_to_user(&oact->sa_mask, &mask, sizeof(mask));
+		ret |= put_compat_sigset(&oact->sa_mask, &old_ka.sa.sa_mask,
+					 sizeof(oact->sa_mask));
 		ret |= put_user(old_ka.sa.sa_flags, &oact->sa_flags);
 #ifdef __ARCH_HAS_SA_RESTORER
 		ret |= put_user(ptr_to_compat(old_ka.sa.sa_restorer),
@@ -3954,22 +3989,15 @@ SYSCALL_DEFINE2(rt_sigsuspend, sigset_t __user *, unewset, size_t, sigsetsize)
 #ifdef CONFIG_COMPAT
 COMPAT_SYSCALL_DEFINE2(rt_sigsuspend, compat_sigset_t __user *, unewset, compat_size_t, sigsetsize)
 {
-#ifdef __BIG_ENDIAN
 	sigset_t newset;
-	compat_sigset_t newset32;
 
 	/* XXX: Don't preclude handling different sized sigset_t's.  */
 	if (sigsetsize != sizeof(sigset_t))
 		return -EINVAL;
 
-	if (copy_from_user(&newset32, unewset, sizeof(compat_sigset_t)))
+	if (get_compat_sigset(&newset, unewset))
 		return -EFAULT;
-	sigset_from_compat(&newset, &newset32);
 	return sigsuspend(&newset);
-#else
-	/* on little-endian bitmaps don't care about granularity */
-	return sys_rt_sigsuspend((sigset_t __user *)unewset, sigsetsize);
-#endif
 }
 #endif
 
@@ -4007,26 +4035,25 @@ void __init signals_init(void)
 #ifdef CONFIG_KGDB_KDB
 #include <linux/kdb.h>
 /*
- * kdb_send_sig_info - Allows kdb to send signals without exposing
+ * kdb_send_sig - Allows kdb to send signals without exposing
  * signal internals.  This function checks if the required locks are
  * available before calling the main signal code, to avoid kdb
  * deadlocks.
  */
-void
-kdb_send_sig_info(struct task_struct *t, struct siginfo *info)
+void kdb_send_sig(struct task_struct *t, int sig)
 {
 	static struct task_struct *kdb_prev_t;
-	int sig, new_t;
+	int new_t, ret;
 	if (!spin_trylock(&t->sighand->siglock)) {
 		kdb_printf("Can't do kill command now.\n"
 			   "The sigmask lock is held somewhere else in "
 			   "kernel, try again later\n");
 		return;
 	}
-	spin_unlock(&t->sighand->siglock);
 	new_t = kdb_prev_t != t;
 	kdb_prev_t = t;
 	if (t->state != TASK_RUNNING && new_t) {
+		spin_unlock(&t->sighand->siglock);
 		kdb_printf("Process is not RUNNING, sending a signal from "
 			   "kdb risks deadlock\n"
 			   "on the run queue locks. "
@@ -4035,8 +4062,9 @@ kdb_send_sig_info(struct task_struct *t, struct siginfo *info)
 			   "the deadlock.\n");
 		return;
 	}
-	sig = info->si_signo;
-	if (send_sig_info(sig, info, t))
+	ret = send_signal(sig, SEND_SIG_PRIV, t, PIDTYPE_PID);
+	spin_unlock(&t->sighand->siglock);
+	if (ret)
 		kdb_printf("Fail to deliver Signal %d to process %d.\n",
 			   sig, t->pid);
 	else
