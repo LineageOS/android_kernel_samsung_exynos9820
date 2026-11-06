@@ -16,6 +16,23 @@
       "message": "Tested and working",
       "revId": "a69248bd66199ba689f44e6d0085f46436cd004f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29a577b2_4f7ad02d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33569
+      },
+      "writtenOn": "2026-11-06T12:44:27Z",
+      "side": 1,
+      "message": "I suggest using \"git merge --log\u003d9999\" for a better commit message.",
+      "revId": "a69248bd66199ba689f44e6d0085f46436cd004f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
