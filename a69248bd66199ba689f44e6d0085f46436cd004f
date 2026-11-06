@@ -33,6 +33,24 @@
       "message": "I suggest using \"git merge --log\u003d9999\" for a better commit message.",
       "revId": "a69248bd66199ba689f44e6d0085f46436cd004f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be672364_1c6d29a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-06T16:04:54Z",
+      "side": 1,
+      "message": "Are you sure it would be better? This merge contains hundreds of commits. I feel like the current message gets across better what is contained in the merge, personally.\n\nI\u0027m not opposed to changing it, but I feel like it would be a downgrade. For exact changes, one can always read the commit history.",
+      "parentUuid": "29a577b2_4f7ad02d",
+      "revId": "a69248bd66199ba689f44e6d0085f46436cd004f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
