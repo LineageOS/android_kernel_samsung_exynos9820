@@ -33,6 +33,23 @@
       "message": "At the request of @extremext@lineageos.org I will split the Mali fixups to a different commit and just let the merge commit itself be uncompilable.",
       "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6b611e8_f1a48094",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33569
+      },
+      "writtenOn": "2026-11-07T23:34:50Z",
+      "side": 1,
+      "message": "https://github.com/LineageOS/android_kernel_samsung_exynos9820/commit/323674817e399e55b3c72e3e2867e77f80362e05\n\nThis is how Tim, and the all Qualcomm common kernel repositories does. Being long is not an issue. Also uncomment the conflicted files if there is any so we can know which files had conflicts while merging.",
+      "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
