@@ -15,9 +15,7 @@ obj-$(CONFIG_UH)              += uh_fault_handler.o
 obj-$(CONFIG_ANDROID_SAR_RAMDISK) += sar_ramdisk/
 
 
-ifneq ($(CONFIG_ARCH_INIT_TASK),y)
 obj-y                          += init_task.o
-endif
 
 mounts-y			:= do_mounts.o
 mounts-$(CONFIG_BLK_DEV_RAM)	+= do_mounts_rd.o

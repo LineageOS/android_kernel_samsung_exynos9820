@@ -1373,7 +1373,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
 			get_page(alloc_frag->page);
 			alloc_frag->offset += buflen;
 			err = xdp_do_redirect(tun->dev, &xdp, xdp_prog);
-			xdp_do_flush_map();
+			xdp_do_flush();
 			if (err)
 				goto err_redirect;
 			rcu_read_unlock();
@@ -2830,7 +2830,7 @@ static int tun_chr_fasync(int fd, struct file *file, int on)
 		goto out;
 
 	if (on) {
-		__f_setown(file, task_pid(current), PIDTYPE_PID, 0);
+		__f_setown(file, task_pid(current), PIDTYPE_TGID, 0);
 		tfile->flags |= TUN_FASYNC;
 	} else
 		tfile->flags &= ~TUN_FASYNC;

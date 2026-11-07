@@ -212,7 +212,7 @@ static void prb_clear_rxhash(struct tpacket_kbdq_core *,
 static void prb_fill_vlan_info(struct tpacket_kbdq_core *,
 		struct tpacket3_hdr *);
 static void packet_flush_mclist(struct sock *sk);
-static void packet_pick_tx_queue(struct net_device *dev, struct sk_buff *skb);
+static u16 packet_pick_tx_queue(struct sk_buff *skb);
 
 struct packet_skb_cb {
 	union {
@@ -246,39 +246,7 @@ static void __fanout_link(struct sock *sk, struct packet_sock *po);
 
 static int packet_direct_xmit(struct sk_buff *skb)
 {
-	struct net_device *dev = skb->dev;
-	struct sk_buff *orig_skb = skb;
-	struct netdev_queue *txq;
-	int ret = NETDEV_TX_BUSY;
-
-	if (unlikely(!netif_running(dev) ||
-		     !netif_carrier_ok(dev)))
-		goto drop;
-
-	skb = validate_xmit_skb_list(skb, dev);
-	if (skb != orig_skb)
-		goto drop;
-
-	packet_pick_tx_queue(dev, skb);
-	txq = skb_get_tx_queue(dev, skb);
-
-	local_bh_disable();
-
-	HARD_TX_LOCK(dev, txq, smp_processor_id());
-	if (!netif_xmit_frozen_or_drv_stopped(txq))
-		ret = netdev_start_xmit(skb, dev, txq, false);
-	HARD_TX_UNLOCK(dev, txq);
-
-	local_bh_enable();
-
-	if (!dev_xmit_complete(ret))
-		kfree_skb(skb);
-
-	return ret;
-drop:
-	atomic_long_inc(&dev->tx_dropped);
-	kfree_skb_list(skb);
-	return NET_XMIT_DROP;
+	return dev_direct_xmit(skb, packet_pick_tx_queue(skb));
 }
 
 static struct net_device *packet_cached_dev_get(struct packet_sock *po)
@@ -315,8 +283,9 @@ static u16 __packet_pick_tx_queue(struct net_device *dev, struct sk_buff *skb)
 	return (u16) raw_smp_processor_id() % dev->real_num_tx_queues;
 }
 
-static void packet_pick_tx_queue(struct net_device *dev, struct sk_buff *skb)
+static u16 packet_pick_tx_queue(struct sk_buff *skb)
 {
+	struct net_device *dev = skb->dev;
 	const struct net_device_ops *ops = dev->netdev_ops;
 	u16 queue_index;
 
@@ -328,7 +297,7 @@ static void packet_pick_tx_queue(struct net_device *dev, struct sk_buff *skb)
 		queue_index = __packet_pick_tx_queue(dev, skb);
 	}
 
-	skb_set_queue_mapping(skb, queue_index);
+	return queue_index;
 }
 
 /* __register_prot_hook must be invoked through register_prot_hook
@@ -1643,7 +1612,7 @@ static void __fanout_set_data_bpf(struct packet_fanout *f, struct bpf_prog *new)
 	}
 }
 
-static int fanout_set_data_cbpf(struct packet_sock *po, char __user *data,
+static int fanout_set_data_cbpf(struct packet_sock *po, sockptr_t data,
 				unsigned int len)
 {
 	struct bpf_prog *new;
@@ -1652,10 +1621,10 @@ static int fanout_set_data_cbpf(struct packet_sock *po, char __user *data,
 
 	if (sock_flag(&po->sk, SOCK_FILTER_LOCKED))
 		return -EPERM;
-	if (len != sizeof(fprog))
-		return -EINVAL;
-	if (copy_from_user(&fprog, data, len))
-		return -EFAULT;
+
+	ret = copy_bpf_fprog_from_user(&fprog, data, len);
+	if (ret)
+		return ret;
 
 	ret = bpf_prog_create_from_user(&new, &fprog, NULL, false);
 	if (ret)
@@ -1691,7 +1660,7 @@ static int fanout_set_data(struct packet_sock *po, char __user *data,
 {
 	switch (po->fanout->type) {
 	case PACKET_FANOUT_CBPF:
-		return fanout_set_data_cbpf(po, data, len);
+		return fanout_set_data_cbpf(po, USER_SOCKPTR(data), len);
 	case PACKET_FANOUT_EBPF:
 		return fanout_set_data_ebpf(po, data, len);
 	default:
@@ -4170,28 +4139,6 @@ static int packet_getsockopt(struct socket *sock, int level, int optname,
 	return 0;
 }
 
-
-#ifdef CONFIG_COMPAT
-static int compat_packet_setsockopt(struct socket *sock, int level, int optname,
-				    char __user *optval, unsigned int optlen)
-{
-	struct packet_sock *po = pkt_sk(sock->sk);
-
-	if (level != SOL_PACKET)
-		return -ENOPROTOOPT;
-
-	if (optname == PACKET_FANOUT_DATA &&
-	    po->fanout && po->fanout->type == PACKET_FANOUT_CBPF) {
-		optval = (char __user *)get_compat_bpf_fprog(optval);
-		if (!optval)
-			return -EFAULT;
-		optlen = sizeof(struct sock_fprog);
-	}
-
-	return packet_setsockopt(sock, level, optname, optval, optlen);
-}
-#endif
-
 static int packet_notifier(struct notifier_block *this,
 			   unsigned long msg, void *ptr)
 {
@@ -4684,9 +4631,6 @@ static const struct proto_ops packet_ops = {
 	.shutdown =	sock_no_shutdown,
 	.setsockopt =	packet_setsockopt,
 	.getsockopt =	packet_getsockopt,
-#ifdef CONFIG_COMPAT
-	.compat_setsockopt = compat_packet_setsockopt,
-#endif
 	.sendmsg =	packet_sendmsg,
 	.recvmsg =	packet_recvmsg,
 	.mmap =		packet_mmap,
