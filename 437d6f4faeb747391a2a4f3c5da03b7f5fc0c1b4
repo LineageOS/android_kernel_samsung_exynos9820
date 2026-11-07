@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "332ed6ee_b02a960e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-07T21:13:47Z",
+      "side": 1,
+      "message": "Fixed. This should be merged, followed by the securityfs defconfig commit (https://review.lineageos.org/c/LineageOS/android_kernel_samsung_exynos9820/+/512634).",
+      "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
