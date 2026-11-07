@@ -16,6 +16,23 @@
       "message": "Fixed. This should be merged, followed by the securityfs defconfig commit (https://review.lineageos.org/c/LineageOS/android_kernel_samsung_exynos9820/+/512634).",
       "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "626f2af6_b31cc5ce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-07T21:55:51Z",
+      "side": 1,
+      "message": "At the request of @extremext@lineageos.org I will split the Mali fixups to a different commit and just let the merge commit itself be uncompilable.",
+      "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
