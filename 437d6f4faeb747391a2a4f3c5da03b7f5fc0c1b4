@@ -50,6 +50,23 @@
       "message": "https://github.com/LineageOS/android_kernel_samsung_exynos9820/commit/323674817e399e55b3c72e3e2867e77f80362e05\n\nThis is how Tim, and the all Qualcomm common kernel repositories does. Being long is not an issue. Also uncomment the conflicted files if there is any so we can know which files had conflicts while merging.",
       "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b759f71e_bd3caa29",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-07T23:43:51Z",
+      "side": 1,
+      "message": "That merge is substantially shorter than this one. The merge commit message here would be over a thousand lines long. I\u0027m getting conflicting opinions here so I\u0027ll wait for Tim\u0027s input but I will uncomment the conflicts next revision.",
+      "revId": "437d6f4faeb747391a2a4f3c5da03b7f5fc0c1b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
