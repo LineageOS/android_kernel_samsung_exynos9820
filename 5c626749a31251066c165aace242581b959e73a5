@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2481b3b_e0c8ebbb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-08T01:03:10Z",
+      "side": 1,
+      "message": "Requires https://review.lineageos.org/c/LineageOS/android_kernel_samsung_exynos9820/+/512634/3 to be applied afterwards or else the kernel will not compile. Previously this was handled by merge conflict resolution but I was advised to not do that.",
+      "revId": "5c626749a31251066c165aace242581b959e73a5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
