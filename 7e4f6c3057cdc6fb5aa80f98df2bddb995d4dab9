@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f463aa8_be210b79",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-08T01:01:44Z",
+      "side": 1,
+      "message": "Depends on https://review.lineageos.org/c/LineageOS/android_kernel_samsung_exynos9820/+/512406",
+      "revId": "7e4f6c3057cdc6fb5aa80f98df2bddb995d4dab9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
