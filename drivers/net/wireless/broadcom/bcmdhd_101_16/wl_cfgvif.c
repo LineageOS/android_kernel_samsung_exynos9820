@@ -3326,6 +3326,20 @@ wl_cfg80211_start_ap(
 		goto fail;
 	}
 
+#ifdef WL_SAE
+	/* SAE offload: password for the firmware, handshake in the driver */
+	if (info->crypto.sae_pwd_len) {
+		err = wl_cfg80211_set_sae_password_ap(dev, info->crypto.sae_pwd,
+			info->crypto.sae_pwd_len);
+		if (err < 0) {
+			WL_ERR(("Set SAE password failed \n"));
+			goto fail;
+		}
+	}
+	wl_ap4way_start(cfg, dev, info->crypto.psk, (const u8 *)ies.wpa2_ie,
+		ies.wpa2_ie ? ies.wpa2_ie->len + TLV_HDR_LEN : 0);
+#endif /* WL_SAE */
+
 	if ((err = wl_cfg80211_bcn_bringup_ap(dev, &ies,
 		dev_role, bssidx)) < 0) {
 		WL_ERR(("Beacon bring up AP/GO failed \n"));
@@ -3439,6 +3453,9 @@ wl_cfg80211_stop_ap(
 	  */
 
 	cancel_delayed_work_sync(&cfg->ap_work);
+#ifdef WL_SAE
+	wl_ap4way_stop();
+#endif /* WL_SAE */
 
 	if (wl_cfg80211_get_bus_state(cfg)) {
 		/* since bus is down, iovar will fail. recovery path will bringup the bus. */
@@ -4150,6 +4167,9 @@ wl_notify_connect_status_ap(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		WL_INFORM_MEM(("[%s] new sta event for "MACDBG "\n",
 			ndev->name, MAC2STRDBG(e->addr.octet)));
 		cfg80211_new_sta(ndev, e->addr.octet, &sinfo, GFP_ATOMIC);
+#ifdef WL_SAE
+		wl_ap4way_assoc(e->addr.octet, data, len);
+#endif /* WL_SAE */
 #ifdef WL_WPS_SYNC
 		wl_wps_session_update(ndev, WPS_STATE_LINKUP, e->addr.octet);
 #endif /* WL_WPS_SYNC */
@@ -4168,6 +4188,9 @@ wl_notify_connect_status_ap(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		WL_INFORM_MEM(("[%s] del sta event for "MACDBG "\n",
 			ndev->name, MAC2STRDBG(e->addr.octet)));
 		cfg80211_del_sta(ndev, e->addr.octet, GFP_ATOMIC);
+#ifdef WL_SAE
+		wl_ap4way_del(e->addr.octet);
+#endif /* WL_SAE */
 #ifdef WL_WPS_SYNC
 		wl_wps_session_update(ndev, WPS_STATE_LINKDOWN, e->addr.octet);
 #endif /* WL_WPS_SYNC */

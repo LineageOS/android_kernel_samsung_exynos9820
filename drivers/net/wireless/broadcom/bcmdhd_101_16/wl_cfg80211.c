@@ -4678,8 +4678,9 @@ exit:
 #endif /* SAE */
 #ifdef WL_SAE
 /* Hand the SAE password to the firmware (SAE authentication offload) */
-s32
-wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len)
+static s32
+wl_cfg80211_do_set_sae_password(struct net_device *net, const void *data, int len,
+	bool set_wpa_auth)
 {
 	struct bcm_cfg80211 *cfg = wl_get_cfg(net);
 	wsec_pmk_t pmk;
@@ -4700,10 +4701,12 @@ wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len)
 		return BCME_BADLEN;
 	}
 	/* Set AUTH to SAE */
-	err = wldev_iovar_setint_bsscfg(net, "wpa_auth", WPA3_AUTH_SAE_PSK, bssidx);
-	if (unlikely(err)) {
-		WL_ERR(("could not set wpa_auth (0x%x)\n", err));
-		return err;
+	if (set_wpa_auth) {
+		err = wldev_iovar_setint_bsscfg(net, "wpa_auth", WPA3_AUTH_SAE_PSK, bssidx);
+		if (unlikely(err)) {
+			WL_ERR(("could not set wpa_auth (0x%x)\n", err));
+			return err;
+		}
 	}
 	pmk.key_len = htod16(len);
 	bcopy((const u8*)data, pmk.key, len);
@@ -4716,6 +4719,19 @@ wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len)
 		WL_INFORM_MEM(("sae passphrase set successfully\n"));
 	}
 	return err;
+}
+
+s32
+wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len)
+{
+	return wl_cfg80211_do_set_sae_password(net, data, len, true);
+}
+
+/* AP: wpa_auth was already set from the beacon, keep it (SAE and/or PSK) */
+s32
+wl_cfg80211_set_sae_password_ap(struct net_device *net, const void *data, int len)
+{
+	return wl_cfg80211_do_set_sae_password(net, data, len, false);
 }
 #endif /* WL_SAE */
 
@@ -6643,6 +6659,13 @@ wl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 
 	WL_INFORM_MEM(("key index (%d) (0x%x)\n", key_idx, params->cipher));
 	RETURN_EIO_IF_NOT_UP(cfg);
+
+#ifdef WL_SAE
+	/* the AP authenticator needs the group keys hostapd installs */
+	if (mode == WL_MODE_AP && !pairwise && !mac_addr)
+		wl_ap4way_group_key(key_idx, params->cipher, params->key, params->key_len,
+			params->seq, params->seq_len);
+#endif /* WL_SAE */
 
 	if ((bssidx = wl_get_bssidx_by_wdev(cfg, dev->ieee80211_ptr)) < 0) {
 		WL_ERR(("Find p2p index from dev(%p) failed\n", dev->ieee80211_ptr));
@@ -10211,6 +10234,8 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 #endif /* WL_SAE || WL_CLIENT_SAE */
 #ifdef WL_SAE
 		wiphy_ext_feature_set(wdev->wiphy, NL80211_EXT_FEATURE_SAE_OFFLOAD);
+		wiphy_ext_feature_set(wdev->wiphy, NL80211_EXT_FEATURE_SAE_OFFLOAD_AP);
+		wiphy_ext_feature_set(wdev->wiphy, NL80211_EXT_FEATURE_4WAY_HANDSHAKE_AP_PSK);
 #endif /* WL_SAE */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)) && defined(BCMSUP_4WAY_HANDSHAKE)
 	if (FW_SUPPORTED(dhd, idsup)) {
@@ -10414,6 +10439,10 @@ void wl_sae4way_start(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	const u8 *bssid, const u8 *pmk, u32 pmk_len);
 void wl_sae4way_reset(void);
 bool wl_sae4way_rx(struct net_device *ndev, const u8 *frame, u32 len);
+void wl_ap4way_pmk(const u8 *peer, const u8 *pmk, u32 pmk_len, const u8 *pmkid,
+	u32 pmkid_len);
+void wl_ap4way_group_key(u8 idx, u32 cipher, const u8 *key, int klen, const u8 *seq,
+	int seqlen);
 #endif /* WL_SAE */
 #ifdef WL_SAE
 static s32
@@ -10427,7 +10456,12 @@ wl_cfg80211_event_sae_key(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	struct cfg80211_pmksa pmksa;
 
 	/* firmware has no in-dongle supplicant: do the 4way handshake in the driver */
-	wl_sae4way_start(cfg, ndev, sae_key->peer_mac, sae_key->pmk, sae_key->pmk_len);
+	if (ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_AP ||
+	    ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_P2P_GO)
+		wl_ap4way_pmk(sae_key->peer_mac, sae_key->pmk, sae_key->pmk_len,
+			sae_key->pmkid, sae_key->pmkid_len);
+	else
+		wl_sae4way_start(cfg, ndev, sae_key->peer_mac, sae_key->pmk, sae_key->pmk_len);
 
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 #if (defined(CONFIG_ARCH_MSM) && defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC)) || \
@@ -21495,3 +21529,4 @@ wl_cleanup_keep_alive(struct bcm_cfg80211 *cfg)
 #endif /* defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE) */
 
 #include "wl_sae4way.c"
+#include "wl_ap4way.c"

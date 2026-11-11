@@ -3034,6 +3034,16 @@ extern s32 wl_cfg80211_set_wsec_info(struct net_device *dev, uint32 *data,
 extern s32 wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len);
 extern bool wl_sae4way_rx(struct net_device *ndev, const u8 *frame, u32 len);
 extern void wl_sae4way_reset(void);
+extern s32 wl_cfg80211_set_sae_password_ap(struct net_device *net, const void *data, int len);
+extern void wl_ap4way_start(struct bcm_cfg80211 *cfg, struct net_device *ndev,
+	const u8 *psk, const u8 *rsne, u32 rsne_len);
+extern void wl_ap4way_stop(void);
+extern void wl_ap4way_pmk(const u8 *peer, const u8 *pmk, u32 pmk_len, const u8 *pmkid,
+	u32 pmkid_len);
+extern void wl_ap4way_group_key(u8 idx, u32 cipher, const u8 *key, int klen, const u8 *seq,
+	int seqlen);
+extern void wl_ap4way_assoc(const u8 *peer, const u8 *ies, u32 len);
+extern void wl_ap4way_del(const u8 *peer);
 #endif /* WL_SAE */
 #define WL_CHANNEL_ARRAY_INIT(band_chan_arr)	\
 do {	\

@@ -276,6 +276,21 @@ static int s4w_install_key(struct net_device *ndev, u8 idx, bool pairwise,
 	return wl_cfg80211_add_key(bcmcfg_to_wiphy(cfg), ndev, idx, pairwise, mac, &kp);
 }
 
+static int s4w_install_key_dev(struct net_device *ndev, u8 idx, bool pairwise,
+	const u8 *mac, u32 cipher, const u8 *key, int klen, const u8 *seq, int seqlen)
+{
+	struct bcm_cfg80211 *cfg = wl_get_cfg(ndev);
+	struct key_params kp;
+
+	memset(&kp, 0, sizeof(kp));
+	kp.key = key;
+	kp.key_len = klen;
+	kp.cipher = cipher;
+	kp.seq = seq;
+	kp.seq_len = seqlen;
+	return wl_cfg80211_add_key(bcmcfg_to_wiphy(cfg), ndev, idx, pairwise, mac, &kp);
+}
+
 /* Parse (decrypted) key data KDEs and install GTK / IGTK */
 static void s4w_install_group_keys(struct net_device *ndev, const u8 *kd, u32 len,
 	const u8 *rsc)
@@ -511,6 +526,8 @@ static void s4w_work(struct work_struct *w)
 
 /* ---- hooks ---- */
 
+bool wl_ap4way_rx(struct net_device *ndev, const u8 *frame, u32 len);
+
 static void wl_sae4way_init(void)
 {
 	if (sae4w.init)
@@ -564,6 +581,11 @@ bool wl_sae4way_rx(struct net_device *ndev, const u8 *frame, u32 len)
 {
 	struct sk_buff *skb;
 	const u8 *e;
+
+	if (ndev->ieee80211_ptr &&
+	    (ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_AP ||
+	     ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_P2P_GO))
+		return wl_ap4way_rx(ndev, frame, len);
 
 	if (!sae4w.init || !sae4w.active || ndev != sae4w.ndev)
 		return false;
