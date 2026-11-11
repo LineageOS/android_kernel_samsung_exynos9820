@@ -4676,6 +4676,48 @@ exit:
 	return err;
 }
 #endif /* SAE */
+#ifdef WL_SAE
+/* Hand the SAE password to the firmware (SAE authentication offload) */
+s32
+wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len)
+{
+	struct bcm_cfg80211 *cfg = wl_get_cfg(net);
+	wsec_pmk_t pmk;
+	s32 bssidx;
+	s32 err = BCME_OK;
+
+	/* clear the content of pmk structure before usage */
+	(void)memset_s(&pmk, sizeof(wsec_pmk_t), 0x0, sizeof(wsec_pmk_t));
+
+	if ((bssidx = wl_get_bssidx_by_wdev(cfg, net->ieee80211_ptr)) < 0) {
+		WL_ERR(("Find p2p index from wdev(%p) failed\n", net->ieee80211_ptr));
+		return BCME_ERROR;
+	}
+
+	if ((len < 1) || (len > WSEC_MAX_PASSPHRASE_LEN)) {
+		WL_ERR(("Invalid passphrase length %d..should be >= 1 and <= 256\n",
+			len));
+		return BCME_BADLEN;
+	}
+	/* Set AUTH to SAE */
+	err = wldev_iovar_setint_bsscfg(net, "wpa_auth", WPA3_AUTH_SAE_PSK, bssidx);
+	if (unlikely(err)) {
+		WL_ERR(("could not set wpa_auth (0x%x)\n", err));
+		return err;
+	}
+	pmk.key_len = htod16(len);
+	bcopy((const u8*)data, pmk.key, len);
+	pmk.flags = htod16(WSEC_PASSPHRASE);
+
+	err = wldev_ioctl_set(net, WLC_SET_WSEC_PMK, &pmk, sizeof(pmk));
+	if (err) {
+		WL_ERR(("\n failed to set pmk %d\n", err));
+	} else {
+		WL_INFORM_MEM(("sae passphrase set successfully\n"));
+	}
+	return err;
+}
+#endif /* WL_SAE */
 
 #ifdef MFP
 static s32
@@ -5508,6 +5550,18 @@ wl_config_assoc_security(struct bcm_cfg80211 *cfg,
 		WL_ERR(("Invalid shared key\n"));
 		goto exit;
 	}
+
+#ifdef WL_SAE
+	/* SAE offload: the password comes with the connect request */
+	if (sme->crypto.sae_pwd_len) {
+		err = wl_cfg80211_set_sae_password(dev, sme->crypto.sae_pwd,
+			sme->crypto.sae_pwd_len);
+		if (unlikely(err)) {
+			WL_ERR(("Failed to set SAE password\n"));
+			goto exit;
+		}
+	}
+#endif /* WL_SAE */
 
 #ifdef WL_FILS
 	err = wl_set_fils_params(dev, sme);
@@ -10155,6 +10209,9 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 #if defined(WL_SAE) || defined(WL_CLIENT_SAE)
 		wdev->wiphy->features |= NL80211_FEATURE_SAE;
 #endif /* WL_SAE || WL_CLIENT_SAE */
+#ifdef WL_SAE
+		wiphy_ext_feature_set(wdev->wiphy, NL80211_EXT_FEATURE_SAE_OFFLOAD);
+#endif /* WL_SAE */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)) && defined(BCMSUP_4WAY_HANDSHAKE)
 	if (FW_SUPPORTED(dhd, idsup)) {
 		wiphy_ext_feature_set(wdev->wiphy, NL80211_EXT_FEATURE_4WAY_HANDSHAKE_STA_PSK);
@@ -10353,6 +10410,12 @@ wl_post_linkup_ops(struct bcm_cfg80211 *cfg, wl_assoc_status_t *as)
 }
 
 #ifdef WL_SAE
+void wl_sae4way_start(struct bcm_cfg80211 *cfg, struct net_device *ndev,
+	const u8 *bssid, const u8 *pmk, u32 pmk_len);
+void wl_sae4way_reset(void);
+bool wl_sae4way_rx(struct net_device *ndev, const u8 *frame, u32 len);
+#endif /* WL_SAE */
+#ifdef WL_SAE
 static s32
 wl_cfg80211_event_sae_key(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	wl_sae_key_info_t *sae_key)
@@ -10362,6 +10425,9 @@ wl_cfg80211_event_sae_key(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	struct wiphy *wiphy = bcmcfg_to_wiphy(cfg);
 	int err = BCME_OK;
 	struct cfg80211_pmksa pmksa;
+
+	/* firmware has no in-dongle supplicant: do the 4way handshake in the driver */
+	wl_sae4way_start(cfg, ndev, sae_key->peer_mac, sae_key->pmk, sae_key->pmk_len);
 
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 #if (defined(CONFIG_ARCH_MSM) && defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC)) || \
@@ -11935,6 +12001,9 @@ wl_handle_assoc_events(struct bcm_cfg80211 *cfg,
 			/* intentional fall through */
 		case WLC_E_DISASSOC:
 		case WLC_E_DEAUTH:
+#ifdef WL_SAE
+			wl_sae4way_reset();
+#endif /* WL_SAE */
 			as.link_action = wl_set_link_action(assoc_state, false);
 			break;
 		case WLC_E_LINK:
@@ -19807,8 +19876,8 @@ wl_cfg80211_sup_event_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgde
 
 	if ((status == WLC_SUP_KEYED || status == WLC_SUP_KEYXCHANGE_WAIT_G1) &&
 	    reason == WLC_E_SUP_OTHER) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
-		/* NL80211_CMD_PORT_AUTHORIZED supported above >= 4.15 */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)) || defined(CONFIG_CFG80211_SAE_BKPORT)
+		/* NL80211_CMD_PORT_AUTHORIZED supported above >= 4.15 (or backported) */
 		cfg80211_port_authorized(ndev, (u8 *)wl_read_prof(cfg, ndev, WL_PROF_BSSID),
 			GFP_KERNEL);
 		WL_INFORM_MEM(("4way HS finished. port authorized event sent\n"));
@@ -21424,3 +21493,5 @@ wl_cleanup_keep_alive(struct bcm_cfg80211 *cfg)
 	return;
 }
 #endif /* defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE) */
+
+#include "wl_sae4way.c"

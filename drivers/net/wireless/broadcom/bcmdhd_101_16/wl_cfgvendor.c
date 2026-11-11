@@ -3104,51 +3104,15 @@ static int
 wl_cfgvendor_set_sae_password(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
-	int err = BCME_OK;
 	struct net_device *net = wdev->netdev;
-	struct bcm_cfg80211 *cfg = wl_get_cfg(net);
-	wsec_pmk_t pmk;
-	s32 bssidx;
 
 /* This api not needed for wpa_supplicant based sae authentication */
 #ifdef WL_CLIENT_SAE
 	WL_INFORM_MEM(("Ignore for external sae auth\n"));
 	return BCME_OK;
+#else
+	return wl_cfg80211_set_sae_password(net, data, len);
 #endif /* WL_CLIENT_SAE */
-
-	/* clear the content of pmk structure before usage */
-	(void)memset_s(&pmk, sizeof(wsec_pmk_t), 0x0, sizeof(wsec_pmk_t));
-
-	if ((bssidx = wl_get_bssidx_by_wdev(cfg, net->ieee80211_ptr)) < 0) {
-		WL_ERR(("Find p2p index from wdev(%p) failed\n", net->ieee80211_ptr));
-		return BCME_ERROR;
-	}
-
-	if ((len < 1) || (len > WSEC_MAX_PASSPHRASE_LEN)) {
-		WL_ERR(("Invalid passphrase length %d..should be >= 1 and <= 256\n",
-			len));
-		err = BCME_BADLEN;
-		goto done;
-	}
-	/* Set AUTH to SAE */
-	err = wldev_iovar_setint_bsscfg(net, "wpa_auth", WPA3_AUTH_SAE_PSK, bssidx);
-	if (unlikely(err)) {
-		WL_ERR(("could not set wpa_auth (0x%x)\n", err));
-		goto done;
-	}
-	pmk.key_len = htod16(len);
-	bcopy((const u8*)data, pmk.key, len);
-	pmk.flags = htod16(WSEC_PASSPHRASE);
-
-	err = wldev_ioctl_set(net, WLC_SET_WSEC_PMK, &pmk, sizeof(pmk));
-	if (err) {
-		WL_ERR(("\n failed to set pmk %d\n", err));
-		goto done;
-	} else {
-		WL_INFORM_MEM(("sae passphrase set successfully\n"));
-	}
-done:
-	return err;
 }
 #endif /* WL_SAE || WL_CLIENT_SAE */
 

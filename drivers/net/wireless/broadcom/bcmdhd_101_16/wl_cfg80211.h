@@ -3031,6 +3031,9 @@ extern int wl_cfgnan_get_stats(struct bcm_cfg80211 *cfg);
 #ifdef WL_SAE
 extern s32 wl_cfg80211_set_wsec_info(struct net_device *dev, uint32 *data,
 	uint16 data_len, int tag);
+extern s32 wl_cfg80211_set_sae_password(struct net_device *net, const void *data, int len);
+extern bool wl_sae4way_rx(struct net_device *ndev, const u8 *frame, u32 len);
+extern void wl_sae4way_reset(void);
 #endif /* WL_SAE */
 #define WL_CHANNEL_ARRAY_INIT(band_chan_arr)	\
 do {	\

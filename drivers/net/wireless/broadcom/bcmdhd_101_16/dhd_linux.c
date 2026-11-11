@@ -4305,6 +4305,13 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 
 		if (protocol == ETHER_TYPE_802_1X) {
 			DBG_EVENT_LOG(dhdp, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
+#if defined(WL_CFG80211) && defined(WL_SAE)
+			/* firmware-offloaded SAE: EAPOL-Key frames are handled in the driver */
+			if (wl_sae4way_rx(ifp->net, skb->data, skb->len)) {
+				PKTFREE(dhdp->osh, pktbuf, FALSE);
+				continue;
+			}
+#endif /* WL_CFG80211 && WL_SAE */
 #if defined(WL_CFG80211) && defined(WL_WPS_SYNC)
 			wl_handle_wps_states(ifp->net, dump_data, len, FALSE);
 #endif /* WL_CFG80211 && WL_WPS_SYNC */
