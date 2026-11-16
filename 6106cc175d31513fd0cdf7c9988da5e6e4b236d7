@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "49f7391a_318c64bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37705
+      },
+      "writtenOn": "2026-11-16T10:51:20Z",
+      "side": 1,
+      "message": "Commit message changed as per Atakan\u0027s request",
+      "revId": "6106cc175d31513fd0cdf7c9988da5e6e4b236d7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
