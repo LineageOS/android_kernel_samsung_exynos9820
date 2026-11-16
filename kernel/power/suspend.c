@@ -614,7 +614,7 @@ static int enter_state(suspend_state_t state)
 	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
 	dbg_snapshot_suspend("sync_filesystems", sys_sync, NULL, state, DSS_FLAG_IN);
 	pr_info("Syncing filesystems ... ");
-	sys_sync();
+	ksys_sync();
 	pr_cont("done.\n");
 	dbg_snapshot_suspend("sync_filesystems", sys_sync, NULL, state, DSS_FLAG_OUT);
 	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
